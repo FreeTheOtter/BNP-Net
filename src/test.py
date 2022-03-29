@@ -34,7 +34,7 @@ T = 5
 z = np.ones([N,1])
 Z = [None]*T
 
-n = 1
+n = 0
 nn = [_ for _ in range(N)]
 nn.remove(n)
 

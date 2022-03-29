@@ -10,9 +10,3 @@ g_mat == 1
 
 apply(mat,2,sum)==0
 
-
-for (i in mat) {
-  for (j in i) {
-  print(j)
-  }
-}

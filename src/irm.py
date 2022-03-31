@@ -43,10 +43,8 @@ def irm(X, T, a, b, A, random_seed = 42):
             # lik of current node to new component
             likelihood_n = np.atleast_2d(betaln(r+a, m.T-r+b) - betaln(a,b))
 
-            logLik = np.atleast_2d(np.sum(np.concatenate([likelihood, likelihood_n]), 1)).T
+            logLik = np.atleast_2d(np.sum(np.concatenate([likelihood, likelihood_n.T], 1), 0)).T
             logPrior = np.log(np.concatenate([m, np.atleast_2d(A)]))
-
-
 
             logPost = logPrior + logLik
 
@@ -74,13 +72,11 @@ def irm(X, T, a, b, A, random_seed = 42):
     return Z 
 
 
-
-
 T = 500
 a = 1
 b = 1
 A = 10
-Z = irm(X, 493, a, b, A)
+Z = irm(X, 500, a, b, A)
 
 for i in range(1, 11):
     print(np.sum(Z[-i], 0))

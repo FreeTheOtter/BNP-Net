@@ -183,7 +183,8 @@ M1 = z[nn,:].T @ X_ @ z[nn,:] - np.diag(np.sum(X_@z[nn,:]*z[nn,:], 0) / 2)
 M0 = m@m.T - np.diag((m*(m+1) / 2).flatten()) - M1
 
 # r = n. of links from current node to components
-r = z[nn,:].T @ X[nn, n]
+r1 = z[nn,:].T @ X[nn, n]
+r2 = r1
 R = np.tile(np.atleast_2d(r).T, (1, K))
 
 # lik matrix of current node sampled to each component

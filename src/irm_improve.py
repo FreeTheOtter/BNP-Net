@@ -41,9 +41,9 @@ def irm(X, T, a, b, A, random_seed = 42):
             # lik matrix of current node sampled to each component
             likelihood = betaln(M1+R+a, M0+M-R+b) - betaln(M1+a, M0+b)
             # lik of current node to new component
-            likelihood_n = np.atleast_2d(betaln(r+a, m-r+b) - betaln(a,b)).T
+            likelihood_n = betaln(r+a, m-r+b) - betaln(a,b)
 
-            logLik = np.sum(np.concatenate([likelihood, likelihood_n], 1), 0)
+            logLik = np.sum(np.concatenate([likelihood, likelihood_n]), 1)
             logPrior = np.log(np.append(m, A))
 
             logPost = logPrior + logLik

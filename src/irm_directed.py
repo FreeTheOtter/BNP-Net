@@ -157,12 +157,19 @@ for i in range(1, 11):
 g = ig.Graph.Read_GML('celegansneural.gml')
 X_full = np.array(g.get_adjacency().data)
 X = X_full[:5, :5]
+
+X = np.array([[0, 1, 1, 0, 1],
+              [1, 0, 0, 0, 1],
+              [1, 0, 0, 1, 1],
+              [1, 1, 1, 0, 0],
+              [0, 0, 1, 1, 0]])
+
 N = len(X)
 z = np.ones([N,1])
 Z = []
 
+n = 0
 #nn = index mask without currently sampled node n
-n = 1
 nn = [_ for _ in range(N)]  
 nn.remove(n) 
 
@@ -172,30 +179,39 @@ X_ = X[np.ix_(nn,nn)] #adjacency matrix without currently sampled node
 K = len(z[0]) 
 
 # m = n. of nodes in each component 
-m = np.atleast_2d(np.sum(z[nn,:], 0)).T
-M = np.tile(m, (1, K))
+m = np.sum(z[nn,:], 0)[np.newaxis]
+M = np.tile(m, (K, 1))
 
 
 # M1 = n. of links between components without current node
 M1 = z[nn,:].T @ X_ @ z[nn,:] - np.diag(np.sum(X_@z[nn,:]*z[nn,:], 0) / 2) 
 
+M1 = z[nn,:].T @ X_ @ z[nn,:]
+
 # M0 = n. of non-links between components without current node
-M0 = m@m.T - np.diag((m*(m+1) / 2).flatten()) - M1
+M0 = m.T@m - np.diag((m*(m+1) / 2).flatten()) - M1 
+
+M0 = m*(m-1) - M1
 
 # r = n. of links from current node to components
-r1 = z[nn,:].T @ X[nn, n]
-r2 = r1
-R = np.tile(np.atleast_2d(r).T, (1, K))
+r = z[nn,:].T @ X[n, nn]
+R = np.tile(r, (K, 1))
 
-# lik matrix of current node sampled to each component
-likelihood = np.atleast_2d(betaln(M1+R+a, M0+M-R+b) - betaln(M1+a, M0+b))
-# lik of current node to new component
-likelihood_n = np.atleast_2d(betaln(r+a, m.T-r+b) - betaln(a,b))
+# s = n. of links from components to current node
+s = z[nn,:].T @ X[nn, n]
+S = np.tile(s, (1, K))
 
-logLik = np.atleast_2d(np.sum(np.concatenate([likelihood, likelihood_n]), 1)).T
-logPrior = np.log(np.concatenate([m, np.atleast_2d(A)]))
+# # lik matrix of current node sampled to each component
+# likelihood = betaln(M1+R+a, M0+M-R+b) - betaln(M1+a, M0+b)
+# # lik of current node to new component
+# likelihood_n = betaln(r+a, m-r+b) - betaln(a,b)
 
+likelihood = betaln(M1+R+S+a, M0+(M*2)-R-S+b) - betaln(M1+a, M0+b) 
 
+likelihood_n = betaln(r+s+a, (m*2)-r-s+b) - betaln(a,b)
+
+logLik = np.sum(np.concatenate([likelihood, likelihood_n]), 1)
+logPrior = np.log(np.append(m, A))
 
 logPost = logPrior + logLik
 

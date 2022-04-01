@@ -35,7 +35,7 @@ def irm(X, T, a, b, A, random_seed = 42):
             M0 = m.T@m - np.diag((m*(m+1) / 2).flatten()) - M1 
 
             # r = n. of links from current node to components
-            r = z[nn,:].T @ X[nn, n].T
+            r = z[nn,:].T @ X[nn, n]
             R = np.tile(r, (K, 1))
 
             # lik matrix of current node sampled to each component

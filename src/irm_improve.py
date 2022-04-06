@@ -14,6 +14,7 @@ def irm(X, T, a, b, A, random_seed = 42):
 
     for t in range(T): # for T iterations
         for n in range(N): # for each node n
+
             #nn = index mask without currently sampled node n
             nn = [_ for _ in range(N)]  
             nn.remove(n) 
@@ -23,19 +24,24 @@ def irm(X, T, a, b, A, random_seed = 42):
             # K = n. of components
             K = len(z[0]) 
 
+            # Delete empty component if present
+            if K > 1:
+                idx = np.argwhere(np.sum(z[nn] == 0, axis=0))
+                z = np.delete(z, idx, axis=1)
+
             # m = n. of nodes in each component 
-            m = np.sum(z[nn,:], 0)[np.newaxis]
+            m = np.sum(z[nn], 0)[np.newaxis]
             M = np.tile(m, (K, 1))
             
 
             # M1 = n. of links between components without current node
-            M1 = z[nn,:].T @ X_ @ z[nn,:] - np.diag(np.sum(X_@z[nn,:]*z[nn,:], 0) / 2) 
+            M1 = z[nn].T @ X_ @ z[nn] - np.diag(np.sum(X_@z[nn]*z[nn], 0) / 2) 
             
             # M0 = n. of non-links between components without current node
             M0 = m.T@m - np.diag((m*(m+1) / 2).flatten()) - M1 
 
             # r = n. of links from current node to components
-            r = z[nn,:].T @ X[nn, n]
+            r = z[nn].T @ X[nn, n]
             R = np.tile(r, (K, 1))
 
             # lik matrix of current node sampled to each component
@@ -61,9 +67,9 @@ def irm(X, T, a, b, A, random_seed = 42):
                 z = np.hstack((z, np.zeros((N,1)))) 
             z[n,i] = 1
 
-            # Delete empty component if present
-            idx = np.argwhere(np.all(z[..., :] == 0, axis=0))
-            z = np.delete(z, idx, axis=1)
+        # Delete empty component if present
+        idx = np.argwhere(np.all(z[..., :] == 0, axis=0))
+        z = np.delete(z, idx, axis=1)    
 
         Z.append(z)
 

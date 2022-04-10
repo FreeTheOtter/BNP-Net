@@ -26,8 +26,9 @@ def irm(X, T, a, b, A, random_seed = 42):
 
             # Delete empty component if present
             if K > 1:
-                idx = np.argwhere(np.sum(z[nn] == 0, axis=0))
+                idx = np.argwhere(np.sum(z[nn], 0) == 0)
                 z = np.delete(z, idx, axis=1)
+                K -= len(idx)
 
             # m = n. of nodes in each component 
             m = np.sum(z[nn], 0)[np.newaxis]

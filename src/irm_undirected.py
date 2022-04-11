@@ -78,9 +78,6 @@ def irm(X, T, a, b, A, random_seed = 42):
     print(m)
     return Z 
 
-
-
-
 T = 500
 a = 1
 b = 1

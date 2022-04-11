@@ -1,70 +1,8 @@
 library(igraph)
 library(pracma)
 
-# setwd("C:/Users/nakaz/Desktop/DSBA/TESI/BNP-Net/src_r")
+setwd("C:/Users/nakaz/Desktop/DSBA/TESI/BNP-Net/src_r")
 g<- read.graph("celegansneural.gml", format=c("gml"))
-g <- read.graph("karate.txt", format=c("gml"))
-
-gibbs_Sweep <- function(n){
-  if (dim(z)[2] > 1){
-    if (0 %in% colSums(z[-n,])){
-      idx_empty <- which(colSums(z[-n,]) == 0)
-      z <- z[, -idx_empty]
-    }
-    if (ncol(z) == 1){
-      z <- matrix(1, N, 1)
-    }
-  }
-  X_ <- X[-n , -n]
-  # K = n.of components
-  K <- ncol(z)
-  
-  if (K>1){
-    m = colSums(z[-n,])
-  } else {
-    m = sum(z[-n])
-  }
-  M <- repmat(m, K, 1)
-  dim(m) <- c(1, length(m))
-  
-  M1 <- t(z[-n,]) %*% X_ %*% z[-n,] - diag(colSums(X_ %*% z[-n,] * z[-n,]) / 2, nrow=K)
-  
-  if (K==1){
-    M0 <- m*(m-1)/2 - M1
-  } else{
-    M0 <- t(m) %*% m - diag(as.vector(m*(m+1) / 2)) - M1
-  }
-  
-  r <- t(t(z[-n,]) %*% X[-n, n])
-  R <- repmat(r, K, 1)
-  
-  logLik_n <- lbeta(M1+R+a, M0+M-R+b) - lbeta(M1+a, M0+b)
-  logLik_newcomp <- lbeta(r+a, m-r+b) - lbeta(a,b)
-  
-  logLikelihood <- rowSums(rbind(logLik_n, logLik_newcomp))
-  logPrior <- log(c(m,A))
-  
-  logPosterior <- logPrior + logLikelihood
-  
-  P = exp(logPosterior - max(logPosterior))
-  
-  draw = runif(1)
-  i = which(draw < cumsum(P)/sum(P))[1]
-  
-  z[n,] <- 0
-  if (i == K+1){
-    z <- cbind(z, rep(0,N))
-  }
-  
-  z[n,i] <- 1
-  
-  if (0 %in% colSums(z)){
-    idx_empty <- which(colSums(z) == 0)
-    z <- z[, -idx_empty]
-  }
-  
-  return (z)
-}
 
 irm_directed <- function(X, T, a, b, A){
   Z <- list() #Initialize empty list to hold partition assignment each gibbs sweep
@@ -86,18 +24,19 @@ irm_directed <- function(X, T, a, b, A){
         }
       }
       
-      # X_ is adjacency matrix without node n
+      # X_ = adjacency matrix without node n
       X_ <- X[-n , -n]
       # K = n.of components
       K <- ncol(z)
       
       # m = n. of nodes in each component
+      # M1 = max link matrix
       if (K>1){
         m = colSums(z[-n,])
-        M <- repmat(m, K, 1) + diag(m) #CHECK
+        M1 <- repmat(m, K, 1) + diag(m) 
       } else {
         m = sum(z[-n])
-        M <- repmat(m, K, 1) + m
+        M1 <- repmat(m, K, 1) + m
       }
       
       dim(m) <- c(1, length(m)) #upgrade to matrix to be able to transpose later
@@ -128,31 +67,35 @@ irm_directed <- function(X, T, a, b, A){
       }
       
       # nonL2 = incoming non-links between components without current node
-      nonL2 <- t(M0)
-      diag(M0_2) <- NA
-      M0_2 <- t(matrix(t(M0_2)[which(!is.na(M0_2))], nrow=dim(M0_2)[1]-1, ncol=dim(M0_2)[2]))
+      nonL2 <- t(nonL1)
+      diag(nonL2) <- NA
+      nonL2 <- t(matrix(t(nonL2)[which(!is.na(nonL2))], nrow=dim(nonL2)[1]-1, ncol=dim(nonL2)[2]))
       
-      nonL <- cbind(M0, M0_2)
+      # nonL = full matrix of non links
+      nonL <- cbind(nonL1, nonL2)
       
-      # r = n. of links from current node to components
+      
+      
+      # r = n. of outgoing links from current node to components
       r <- t(t(z[-n,]) %*% X[-n, n])
       R <- repmat(r, K, 1)
       
-      # s = n. of links from components to current node
+      # s = n. of incoming links from components to current node
       s <- t(z[-n,]) %*% X[n, -n]
       S <- repmat(s, 1, K)
       
       
       
+      # L_n = currently sampled node links, initialized as a matrix of zeros
       L_n = matrix(0, nrow=dim(L)[1], ncol=dim(L)[2])
-      # current_node_links + R
+      # current node links + R (all outgoing links)
       L_n[1:dim(R)[1], 1:dim(R)[2]] <- L_n[1:dim(R)[1], 1:dim(R)[2]]+R
       
-      #s_diag <- s #diag
-      s_diag <- diag(as.vector(s))
+      # Adding to L_n diagonal incoming links (as there is a single prob. parameter within cluster)
       diag(L_n) <- diag(L_n) + as.vector(s)
       
-      #ROBA SU S
+      # Remove diagonal from S (incoming links to current node matrix) and transposing,
+      # to sum to right side of link matrix
       diag(S) <- NA #CHECKKKK
       S <- t(matrix(S[which(!is.na(S))], nrow=dim(S)[1]-1, ncol=dim(S)[2]))
       if (K>1){
@@ -160,12 +103,12 @@ irm_directed <- function(X, T, a, b, A){
       }
       
       
+      # Update M1 (Max link matrix) with incoming max links M2
+      M2 <- M1
+      diag(M2) <- NA
+      M2 <- t(matrix(t(M2)[which(!is.na(M2))], nrow=dim(M2)[1]-1, ncol=dim(M2)[2]))
       
-      M__2 <- M
-      diag(M__2) <- NA
-      M__2 <- t(matrix(t(M__2)[which(!is.na(M__2))], nrow=dim(M__2)[1]-1, ncol=dim(M__2)[2]))
-      
-      maxL_n <- cbind(M, M__2)
+      maxL_n <- cbind(M1, M2)
       
       
       logLik_old <- rowSums(lbeta(L+L_n+a, nonL+(maxL_n-L_n)+b) - lbeta(L+a, nonL+b))
@@ -176,50 +119,40 @@ irm_directed <- function(X, T, a, b, A){
       
       logPosterior <- logPrior + logLikelihood
       
+      # normalized probability vector
       P = exp(logPosterior - max(logPosterior))
       
+      # Draw from uniform, assign to component i
       draw = runif(1)
       i = which(draw < cumsum(P)/sum(P))[1]
       
       z[n,] <- 0
-      if (i == K+1){
+      if (i == K+1){#if new component, add new column to partition assignment matrix z
         z <- cbind(z, rep(0,N))
       }
-      
       z[n,i] <- 1
-      
-      if (0 %in% colSums(z)){
-        idx_empty <- which(colSums(z) == 0)
-        z <- z[, -idx_empty]
-      }
     }
     
     Z[[t]] <- z #save partition at the end of gibbs cycle
   }
+  
+  return (Z)
+}
 
-Z <- irm(X,T,a,b,A)
+
 
 
 X <- as_adjacency_matrix(g)
 X <- matrix(X, nrow(X), ncol(X))
-X[X>1] <- 1
-X <- X[1:5, 1:5]
-
-X <- t(matrix(c(0,1,1,0,1,
-              1,0,0,0,1,
-              1,0,0,1,1,
-              1,1,1,0,0,
-              0,0,1,1,0),nrow=5, ncol=5))
+X[X>1] <- 1 #There are some 2 values in the adjacency matrix for some reason (probably renaming from label to node number in the dataset) 
 
 a <- 1
 b <- 1
 A <- 20
-T <- 500
+T <- 100
+set.seed(42)
+Z <- irm_directed(X,T,a,b,A)
 
-Z <- list()
-N <- nrow(X)
-z <- matrix(1, N, 1)
-
-# n <- 3
-
-
+for (i in 0:10){
+  print(colSums(Z[[length(Z) - i]]))
+}

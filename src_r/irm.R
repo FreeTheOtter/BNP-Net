@@ -1,79 +1,17 @@
 library(igraph)
 library(pracma)
 
-#setwd("C:/Users/nakaz/Desktop/DSBA/TESI/BNP-Net/src_r")
-g <- read.graph("celegansneural.gml", format=c("gml"))
 g <- read.graph("karate.txt", format=c("gml"))
 
-gibbs_Sweep <- function(n){
-  if (dim(z)[2] > 1){
-    if (0 %in% colSums(z[-n,])){
-      idx_empty <- which(colSums(z[-n,]) == 0)
-      z <- z[, -idx_empty]
-    }
-    if (ncol(z) == 1){
-      z <- matrix(1, N, 1)
-    }
-  }
-  X_ <- X[-n , -n]
-  # K = n.of components
-  K <- ncol(z)
-  
-  if (K>1){
-    m = colSums(z[-n,])
-  } else {
-    m = sum(z[-n])
-  }
-  M <- repmat(m, K, 1)
-  dim(m) <- c(1, length(m))
-  
-  M1 <- t(z[-n,]) %*% X_ %*% z[-n,] - diag(colSums(X_ %*% z[-n,] * z[-n,]) / 2, nrow=K)
-  
-  if (K==1){
-    M0 <- m*(m-1)/2 - M1
-  } else{
-    M0 <- t(m) %*% m - diag(as.vector(m*(m+1) / 2)) - M1
-  }
-  
-  r <- t(t(z[-n,]) %*% X[-n, n])
-  R <- repmat(r, K, 1)
-  
-  logLik_n <- lbeta(M1+R+a, M0+M-R+b) - lbeta(M1+a, M0+b)
-  logLik_newcomp <- lbeta(r+a, m-r+b) - lbeta(a,b)
-  
-  logLikelihood <- rowSums(rbind(logLik_n, logLik_newcomp))
-  logPrior <- log(c(m,A))
-  
-  logPosterior <- logPrior + logLikelihood
-  
-  P = exp(logPosterior - max(logPosterior))
-  
-  draw = runif(1)
-  i = which(draw < cumsum(P)/sum(P))[1]
-  
-  z[n,] <- 0
-  if (i == K+1){
-    z <- cbind(z, rep(0,N))
-  }
-  
-  z[n,i] <- 1
-  
-  if (0 %in% colSums(z)){
-    idx_empty <- which(colSums(z) == 0)
-    z <- z[, -idx_empty]
-  }
-  
-  return (z)
-}
-
 irm <- function(X, T, a, b, A){
-  Z <- list()
+  Z <- list() #Initialize empty list to hold partition assignment each gibbs sweep
   N <- nrow(X)
   z <- matrix(1, N, 1) #Initialize assignment vector (1 component)
   
-  for (t in 1:T){
-    for (n in 1:N){
+  for (t in 1:T){# for each iteration t
+    for (n in 1:N){#for each node n
       
+      # If partition without node n has empty component, remove it
       if (dim(z)[2] > 1){
         if (0 %in% colSums(z[-n,])){
           idx_empty <- which(colSums(z[-n,]) == 0)
@@ -83,33 +21,41 @@ irm <- function(X, T, a, b, A){
           z <- matrix(1, N, 1)
         }
       }
+      
+      # X_ = adjacency matrix without node n
       X_ <- X[-n , -n]
       # K = n.of components
       K <- ncol(z)
       
+      # m = n. of nodes in each component
       if (K>1){
         m = colSums(z[-n,])
       } else {
         m = sum(z[-n])
       }
+      # M = max link matrix
       M <- repmat(m, K, 1)
-      dim(m) <- c(1, length(m))
       
-      M1 <- t(z[-n,]) %*% X_ %*% z[-n,] - diag(colSums(X_ %*% z[-n,] * z[-n,]) / 2, nrow=K)
+      dim(m) <- c(1, length(m)) #upgrade to matrix to be able to transpose later
       
+      # L = links matrix between components without current node
+      L <- t(z[-n,]) %*% X_ %*% z[-n,] - diag(colSums(X_ %*% z[-n,] * z[-n,]) / 2, nrow=K)
+      
+      # nonL = non-links matrix between components without current node
       if (K==1){
-        M0 <- m*(m-1)/2 - M1
+        nonL <- m*(m-1)/2 - L
       } else{
-        M0 <- t(m) %*% m - diag(as.vector(m*(m+1) / 2)) - M1
+        nonL <- t(m) %*% m - diag(as.vector(m*(m+1) / 2)) - L
       }
       
+      # r = n. of links from current node to components
       r <- t(t(z[-n,]) %*% X[-n, n])
       R <- repmat(r, K, 1)
       
-      logLik_n <- lbeta(M1+R+a, M0+M-R+b) - lbeta(M1+a, M0+b)
-      logLik_newcomp <- lbeta(r+a, m-r+b) - lbeta(a,b)
+      logLik_old <- lbeta(L+R+a, nonL+(M-R)+b) - lbeta(L+a, nonL+b)
+      logLik_new <- lbeta(r+a, m-r+b) - lbeta(a,b)
       
-      logLikelihood <- rowSums(rbind(logLik_n, logLik_newcomp))
+      logLikelihood <- rowSums(rbind(logLik_old, logLik_new))
       logPrior <- log(c(m,A))
       
       logPosterior <- logPrior + logLikelihood
@@ -123,13 +69,8 @@ irm <- function(X, T, a, b, A){
       if (i == K+1){
         z <- cbind(z, rep(0,N))
       }
-      
       z[n,i] <- 1
       
-      if (0 %in% colSums(z)){
-        idx_empty <- which(colSums(z) == 0)
-        z <- z[, -idx_empty]
-      }
     }
     Z[[t]] <- z #save partition at the end of gibbs cycle
   }
@@ -144,11 +85,11 @@ a <- 1
 b <- 1
 A <- 10
 T <- 500
-
+set.seed(6)
 Z <- irm(X,T,a,b,A)
-colSums(Z[[length(Z)]])
 
-gibbs_Sweep(1)
-colSums(gibbs_Sweep(1))
+for (i in 0:10){
+  print(colSums(Z[[length(Z) - i]]))
+}
 
 

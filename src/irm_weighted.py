@@ -1,6 +1,8 @@
 import igraph as ig
 import numpy as np
 from scipy.special import betaln
+from scipy.special import gammaln
+from scipy.stats import poisson
 
 def irm_directed(X, T, a, b, A, random_seed = 42):
     N = len(X)
@@ -15,10 +17,6 @@ def irm_directed(X, T, a, b, A, random_seed = 42):
             #nn = index mask without currently sampled node n
             nn = [_ for _ in range(N)]  
             nn.remove(n) 
-
-            if z.shape[1] > 1:
-                idx = np.argwhere(np.all(z[nn, :] == 0, axis=0))
-                z = np.delete(z, idx, axis=1)
 
             X_ = X[np.ix_(nn,nn)] #adjacency matrix without currently sampled node
 
@@ -70,11 +68,13 @@ def irm_directed(X, T, a, b, A, random_seed = 42):
             max_links_current_node = np.concatenate([M,M__2],axis=1)
 
 
-            likelihood = np.sum(betaln(link_matrix+current_node_links+a, non_link_matrix+(max_links_current_node)-current_node_links+b) \
-                        - betaln(link_matrix+a, non_link_matrix+b), 1)
+            
+
+            likelihood = np.sum(gammaln(link_matrix+current_node_links+a,np.array(len(z[nn,:])+b).astype(float)[np.newaxis][np.newaxis] ) \
+                        - gammaln(link_matrix+a, np.array(b).astype(float)[np.newaxis][np.newaxis]), 1)
             #likelihood = 
 
-            likelihood_n = np.sum(betaln(np.hstack([r,s])+a, np.hstack([m-r,m-s])+b) - betaln(a,b),1)
+            likelihood_n = np.sum(gammaln(np.hstack([r,s])+a, np.hstack([m-r,m-s])+b) - gammaln(a,b),1)
 
             logLik = np.concatenate([likelihood, likelihood_n])
             logPrior = np.log(np.append(m, A))
@@ -94,13 +94,18 @@ def irm_directed(X, T, a, b, A, random_seed = 42):
                 z = np.hstack((z, np.zeros((N,1)))) 
             z[n,i] = 1
 
+            # Delete empty component if present
+            idx = np.argwhere(np.all(z[..., :] == 0, axis=0))
+            z = np.delete(z, idx, axis=1)
+
         Z.append(z)
     return Z 
 
 
 g = ig.Graph.Read_GML('celegansneural.gml')
-X = np.array(g.get_adjacency().data)
-X[X>1] = 1
+X = np.array(g.get_adjacency(attribute = "value").data).astype(int)
+X = X[:10,:10]
+
 
 
 N = len(X)
@@ -113,5 +118,4 @@ a = 1
 b = 1
 A = 20
 
-#Z = irm_directed(X, T, a, b, A)
-
+Z = irm_directed(X, T, a, b, A)

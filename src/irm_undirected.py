@@ -2,8 +2,8 @@ import igraph as ig
 import numpy as np
 from scipy.special import betaln
 
-g = ig.Graph.Read_GML('karate.txt')
-X = np.array(g.get_adjacency().data)
+# g = ig.Graph.Read_GML('karate.txt')
+# X = np.array(g.get_adjacency().data)
 
 def irm(X, T, a, b, A, random_seed = 42):
     N = len(X)
@@ -74,18 +74,16 @@ def irm(X, T, a, b, A, random_seed = 42):
 
         Z.append(z)
 
-    print(z)
-    print(m)
     return Z 
 
-T = 500
-a = 1
-b = 1
-A = 10
-Z = irm(X, T, a, b, A)
+# T = 500
+# a = 1
+# b = 1
+# A = 10
+# Z = irm(X, T, a, b, A)
 
-for i in range(1, 11):
-    print(np.sum(Z[-i], 0))
+# for i in range(1, 11):
+#     print(np.sum(Z[-i], 0))
 
 
 

@@ -30,6 +30,7 @@ X[X>1] = 1
 
 X = X[:10,:10]
 
+
 N = len(X)
 z = np.ones([N,1])
 Z = []
@@ -44,16 +45,5 @@ Z_out, Z_in = irm_directed_separate(X, T, a, b, A)
 
 Z_directed = irm_directed(X, T, a, b, A)
 
-def retrieve_samples(Z, gap = 25, burn_in = True):
-    if burn_in == True:
-        burn_in = len(Z)//2   
-    return Z[burn_in::gap]
+# sample = retrieve_samples(Z_directed)
 
-def cluster_summs(Z):
-    for i in range(len(Z)):
-    print(np.sum(Z[i]), 0)
-
-sample = retrieve_samples(Z_directed)
-    
-for i in range(len(sample)):
-    print(np.sum(sample[i]), 0)

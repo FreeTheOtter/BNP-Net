@@ -71,7 +71,7 @@ def cluster_summs(Z, ret = False):
 #         non_links = M0[A[i], A[j]]
 #         rhos[i,j] += (links + a) / (links + non_links + a + b)
 
-def compute_rhos(X, Z):
+def compute_rhos(X, Z, a=1, b=1):
     A = np.array([np.where(Z[i,:] == 1)[0] for i in range(len(Z))]).flatten()
 
     Z.T @ X @ Z
@@ -102,28 +102,10 @@ def compute_rho(X, sample):
     rhos /= len(sample)
     return rhos
 
-
-g = ig.Graph.Read_GML('karate.txt')
-X = np.array(g.get_adjacency().data)
-
-T = 500
-a = 1
-b = 1
-A = 5
-Z = irm(X, T, a, b, A)
-
-sample = retrieve_samples(Z)
-cluster_summs(sample)
-
-Z1 = Z[-1]
-
-
-W = np.zeros((len(X),len(X))).astype(int)
-W[0,1] = 1
-W[1,0] = 1
-
-def create_W(X, proportion = 0.1, symmetric = True, seed = 42, ret_indices = True):
-    np.random.seed(seed)
+def create_W(X, prop_links = 0.1, prop_nonlinks = 0.1, symmetric = True, rand_ = False, seed = 42, ret_indices = True):
+    if rand_ == False:
+        np.random.seed(seed)
+    
     if symmetric:
         trX = X[np.triu_indices(len(X), k=1)]
         mask = trX>0
@@ -133,13 +115,13 @@ def create_W(X, proportion = 0.1, symmetric = True, seed = 42, ret_indices = Tru
         nonlinks = len(trX[trX==0])
 
 
-        draw = np.random.choice(links, size=round(links*proportion), replace = False)
+        draw = np.random.choice(links, size=round(links*prop_links), replace = False)
         a1 = trX[mask] 
         a1[draw] = 0
         trX[mask] = a1
 
         
-        draw = np.random.choice(nonlinks, size=round(nonlinks*proportion), replace = False)
+        draw = np.random.choice(nonlinks, size=round(nonlinks*prop_nonlinks), replace = False)
         a2 = trX[~mask]
         a2[draw] = 1
         trX[~mask] = a2
@@ -149,7 +131,7 @@ def create_W(X, proportion = 0.1, symmetric = True, seed = 42, ret_indices = Tru
         out = out + out.T
 
     if ret_indices:
-        idxmatrix = W != X
+        idxmatrix = out != X
         return out, idxmatrix.astype(int)
     else:
         return out
@@ -188,9 +170,39 @@ def draw_roc(X, rhos):
     plt.legend(loc="lower right")
     plt.show()
 
-pred = np.random.binomial(1, rho).flatten()
-fpr, tpr, _ = roc_curve(X.flatten(), pred)
-roc_auc = auc(fpr, tpr)
+# pred = np.random.binomial(1, rho).flatten()
+
+
+
+g = ig.Graph.Read_GML('karate.txt')
+X = np.array(g.get_adjacency().data)
+
+T = 500
+a = 1
+b = 1
+A = 5
+Z = irm(X, T, a, b, A)
+
+
+pred = np.array([], int)
+true = np.array([], int)
+for _ in range(5):
+    X_missing, W = create_W(X,prop_links = 0.05, prop_nonlinks = 0.05, rand_=True)
+    Z_missing = irm(X_missing, 1000, 1, 1, 5)
+    sample_missing = retrieve_samples(Z_missing)
+    rho_missing = compute_rho(X, sample_missing)
+
+    prob_miss = W*rho_missing
+    prob_miss2 = prob_miss[np.triu_indices(len(prob_miss), k=1)].flatten()
+    prob_miss2 = prob_miss2[prob_miss2 > 0]
+    draws = np.random.binomial(1, prob_miss2)
+
+    pred = np.concatenate([pred, draws])
+
+    trW = W[np.triu_indices(len(W), k=1)].flatten()
+    trX = X[np.triu_indices(len(X), k=1)].flatten()
+
+    true = np.concatenate([true, trX[trW == 1]])
 
 plt.figure()
 lw = 2
@@ -211,4 +223,4 @@ plt.legend(loc="lower right")
 plt.show()
 
 
-W*rho_missing
+Z = irm(X, 500, 1, 1, 5)

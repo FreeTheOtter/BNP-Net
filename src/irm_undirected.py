@@ -5,12 +5,13 @@ from scipy.special import betaln
 # g = ig.Graph.Read_GML('karate.txt')
 # X = np.array(g.get_adjacency().data)
 
-def irm(X, T, a, b, A, random_seed = 42):
+def irm(X, T, a, b, A, set_seed = True, random_seed = 42):
     N = len(X)
     z = np.ones([N,1])
     Z = []
 
-    np.random.seed(random_seed)
+    if set_seed:
+        np.random.seed(random_seed)
 
     for t in range(T): # for T iterations
         for n in range(N): # for each node n

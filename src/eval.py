@@ -38,4 +38,12 @@ Z = irm(X, T, a, b, A)
 sample = retrieve_samples(Z)
 cluster_summs(sample)
 
+W = np.zeros((len(X),len(X)))
+W[0,1] = 1
 
+X_missing = X-X*W
+Z_missing = irm(X_missing, T, a, b, A)
+sample = retrieve_samples(Z_missing)
+cluster_summs(sample)
+
+test = Z[-1]

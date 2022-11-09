@@ -28,38 +28,38 @@ def cluster_summs(Z, ret = False):
     if ret:
         return temp_Z
 
-# X = np.array([[0, 1, 1],
-#               [1, 0, 0],
-#               [1, 0, 0]])
+X1 = np.array([[0, 1, 1],
+              [1, 0, 0],
+              [1, 0, 0]])
 
-# Z1 = np.array([[0, 1],
-#                 [1, 0],
-#                 [1, 0]])
+Z1 = np.array([[0, 1],
+                [1, 0],
+                [1, 0]])
 
 
-# X = np.array([[0, 1, 1, 1, 1],
-#               [1, 0, 1, 0, 0],
-#               [1, 1, 0, 1, 0],
-#               [1, 0, 1, 0, 0],
-#               [1, 0, 0, 0, 0]])
+X = np.array([[0, 1, 1, 1, 1],
+              [1, 0, 1, 1, 0],
+              [1, 1, 0, 1, 0],
+              [1, 1, 1, 0, 0],
+              [1, 0, 0, 0, 0]])
 
-# Z1 = np.array([[0, 1, 0],
-#                 [1, 0, 0],
-#                 [1, 0, 0],
-#                 [1, 0, 0],
-#                 [0, 0, 1]])
+Z = np.array([[0, 1, 0],
+                [1, 0, 0],
+                [1, 0, 0],
+                [1, 0, 0],
+                [0, 0, 1]])
 
 # A = np.array([np.where(Z1[i,:] == 1)[0] for i in range(len(Z1))]).flatten()
 
-# Z1.T @ X @ Z1
-# np.diag(np.sum(X@Z1*Z1, 0) / 2) 
+Z1.T @ X1 @ Z1
+np.diag(np.sum(X1@Z1*Z1, 0) / 2) 
 
-# M1 = Z1.T @ X @ Z1 - np.diag(np.sum(X@Z1*Z1, 0) / 2) 
+M1 = Z1.T @ X1 @ Z1 - np.diag(np.sum(X1@Z1*Z1, 0) / 2) 
 
-# m = np.sum(Z1, 0)[np.newaxis]
+m = np.sum(Z1, 0)[np.newaxis]
 # # M = np.tile(m, (K, 1))
 
-# M0 = m.T@m - np.diag((m*(m+1) / 2).flatten()) - M1 
+M0 = m.T@m - np.diag((m*(m+1) / 2).flatten()) - M1 
 
 # rhos = np.zeros((len(X), len(X)))
 
@@ -73,9 +73,6 @@ def cluster_summs(Z, ret = False):
 
 def compute_rhos(X, Z, a=1, b=1):
     A = np.array([np.where(Z[i,:] == 1)[0] for i in range(len(Z))]).flatten()
-
-    Z.T @ X @ Z
-    np.diag(np.sum(X@Z*Z, 0) / 2) 
 
     M1 = Z.T @ X @ Z - np.diag(np.sum(X@Z*Z, 0) / 2) 
 
@@ -92,14 +89,16 @@ def compute_rhos(X, Z, a=1, b=1):
             links = M1[A[i], A[j]]
             non_links = M0[A[i], A[j]]
             rhos[i,j] += (links + a) / (links + non_links + a + b)
-
+    print(rhos[rhos>1])
     return rhos
 
 def compute_rho(X, sample):
     rhos = np.zeros((len(X), len(X)))
     for i in sample:
         rhos += compute_rhos(X, i)
+    
     rhos /= len(sample)
+    print(rhos[rhos>1])
     return rhos
 
 def create_W(X, prop_links = 0.1, prop_nonlinks = 0.1, symmetric = True, rand_ = False, seed = 42, ret_indices = True):
@@ -139,12 +138,12 @@ def create_W(X, prop_links = 0.1, prop_nonlinks = 0.1, symmetric = True, rand_ =
 X_missing, W = create_W(X)
 
 # X_missing = X-X*W
-Z_missing = irm(X_missing, T, a, b, 5)
-sample_missing = retrieve_samples(Z_missing)
-cluster_summs(sample_missing)
+# Z_missing = irm(X_missing, T, a, b, 5)
+# sample_missing = retrieve_samples(Z_missing)
+# cluster_summs(sample_missing)
 
-rho = compute_rho(X, sample)
-rho_missing = compute_rho(X, sample_missing)
+# rho = compute_rho(X, sample)
+# rho_missing = compute_rho(X, sample_missing)
 
 def draw_roc(X, rhos):
     draws = np.random.binomial(1, rhos)
@@ -188,7 +187,7 @@ pred = np.array([], int)
 true = np.array([], int)
 for _ in range(5):
     X_missing, W = create_W(X,prop_links = 0.05, prop_nonlinks = 0.05, rand_=True)
-    Z_missing = irm(X_missing, 1000, 1, 1, 5)
+    Z_missing = irm(X_missing, 1000, 1, 1, 5, set_seed=False)
     sample_missing = retrieve_samples(Z_missing)
     rho_missing = compute_rho(X, sample_missing)
 
@@ -204,6 +203,10 @@ for _ in range(5):
 
     true = np.concatenate([true, trX[trW == 1]])
 
+
+fpr, tpr, _ = roc_curve(true, pred)
+roc_auc = auc(fpr, tpr)
+
 plt.figure()
 lw = 2
 plt.plot(
@@ -212,7 +215,7 @@ plt.plot(
     color="darkorange",
     lw=lw,
     label="ROC curve (area = %0.2f)" % roc_auc,
-)
+    )
 plt.plot([0, 1], [0, 1], color="navy", lw=lw, linestyle="--")
 plt.xlim([0.0, 1.0])
 plt.ylim([0.0, 1.05])
@@ -222,5 +225,42 @@ plt.title("Receiver operating characteristic example")
 plt.legend(loc="lower right")
 plt.show()
 
+rho = np.zeros((len(X), len(X)))
+for _ in range(5):
+    Z = irm(X, 500, 1, 1, 5, set_seed = False)
+    sample = retrieve_samples(Z)
+    rhos = compute_rho(X, Z)
+    rho += rhos
 
-Z = irm(X, 500, 1, 1, 5)
+for _ in range(5):
+    Z = irm(X, 500, 1, 1, 10, set_seed = False)
+    sample = retrieve_samples(Z)
+    rhos = compute_rho(X, Z)
+    rho += rhos
+
+rho = np.zeros((len(X), len(X)))
+n = 1
+for _ in range(n):
+    Z = irm(X, 500, 1, 1, 1, set_seed = False)
+    sample = retrieve_samples(Z)
+    print(cluster_summs(sample))
+    rhos = compute_rho(X, sample)
+    rho += rhos
+rho /= n
+
+for i in range(5):
+    # X_gen = np.random.binomial(1, rho)
+    # trX = np.triu(X_gen)
+    # X_gen = np.where(trX, trX, trX.T)
+    X_gen = np.zeros((len(X), len(X)))
+    X_gen[rho>0.5] = 1
+
+    ggen = ig.Graph.Adjacency(X_gen)
+    print('degree mean', np.mean(ggen.degree()))
+    print('degree std', np.std(ggen.degree()))
+    print('characteristic path length', np.mean(ggen.shortest_paths()))
+
+np.mean(ggen.degree())
+np.std(ggen.degree())
+np.mean(g.degree())
+np.std(g.degree())

@@ -46,4 +46,77 @@ Z_missing = irm(X_missing, T, a, b, A)
 sample = retrieve_samples(Z_missing)
 cluster_summs(sample)
 
-test = Z[-1]
+Z1 = Z[-1]
+
+
+# X = np.array([[0, 1, 1],
+#               [1, 0, 0],
+#               [1, 0, 0]])
+
+# Z1 = np.array([[0, 1],
+#                 [1, 0],
+#                 [1, 0]])
+
+
+# X = np.array([[0, 1, 1, 1, 1],
+#               [1, 0, 1, 0, 0],
+#               [1, 1, 0, 1, 0],
+#               [1, 0, 1, 0, 0],
+#               [1, 0, 0, 0, 0]])
+
+# Z1 = np.array([[0, 1, 0],
+#                 [1, 0, 0],
+#                 [1, 0, 0],
+#                 [1, 0, 0],
+#                 [0, 0, 1]])
+
+# A = np.array([np.where(Z1[i,:] == 1)[0] for i in range(len(Z1))]).flatten()
+
+# Z1.T @ X @ Z1
+# np.diag(np.sum(X@Z1*Z1, 0) / 2) 
+
+# M1 = Z1.T @ X @ Z1 - np.diag(np.sum(X@Z1*Z1, 0) / 2) 
+
+# m = np.sum(Z1, 0)[np.newaxis]
+# # M = np.tile(m, (K, 1))
+
+# M0 = m.T@m - np.diag((m*(m+1) / 2).flatten()) - M1 
+
+# rhos = np.zeros((len(X), len(X)))
+
+# for i in range(len(X)):
+#     for j in range(len(X)):
+#         if i == j:
+#             continue
+#         links = M1[A[i], A[j]]
+#         non_links = M0[A[i], A[j]]
+#         rhos[i,j] += (links + a) / (links + non_links + a + b)
+
+def compute_rhos(X, Z1):
+    A = np.array([np.where(Z1[i,:] == 1)[0] for i in range(len(Z1))]).flatten()
+
+    Z1.T @ X @ Z1
+    np.diag(np.sum(X@Z1*Z1, 0) / 2) 
+
+    M1 = Z1.T @ X @ Z1 - np.diag(np.sum(X@Z1*Z1, 0) / 2) 
+
+    m = np.sum(Z1, 0)[np.newaxis]
+
+    M0 = m.T@m - np.diag((m*(m+1) / 2).flatten()) - M1 
+
+    rhos = np.zeros((len(X), len(X)))
+
+    for i in range(len(X)):
+        for j in range(len(X)):
+            if i == j:
+                continue
+            links = M1[A[i], A[j]]
+            non_links = M0[A[i], A[j]]
+            rhos[i,j] += (links + a) / (links + non_links + a + b)
+
+    return rhos
+
+rhos = np.zeros((len(X), len(X)))
+for i in sample:
+    rhos += compute_rhos(X, i)
+rhos /= len(sample)

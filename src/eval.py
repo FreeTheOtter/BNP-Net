@@ -26,8 +26,8 @@ def cluster_summs(Z, ret = False):
 
     print('mean number of clusters', mean_lenght)
     print('mean nodes per cluster', mean_nodes)
-    if ret:
-        return temp_Z
+    # if ret:
+    #     return temp_Z
 
 # X1 = np.array([[0, 1, 1],
 #               [1, 0, 0],
@@ -74,7 +74,6 @@ def cluster_summs(Z, ret = False):
 
 def compute_rhos(X, Z, a=1, b=1, mode = 'undirected'):    
     A = np.array([np.where(Z[i,:] == 1)[0] for i in range(len(Z))]).flatten()
-    print('mode', mode)
     if mode == 'undirected':
         M1 = Z.T @ X @ Z - np.diag(np.sum(X@Z*Z, 0) / 2) 
 
@@ -220,226 +219,226 @@ X = np.array(g.get_adjacency().data)
 #     rhos = compute_rho(X, Z)
 #     rho += rhos
 
-rho = np.zeros((len(X), len(X)))
-n = 5
-for _ in range(n):
-    Z = irm(X, 500, 1, 1, 5, set_seed = False)
-    sample = retrieve_samples(Z)
-    print(cluster_summs(sample))
-    rhos = compute_rho(X, sample)
-    rho += rhos
-rho /= n
+# rho = np.zeros((len(X), len(X)))
+# n = 5
+# for _ in range(n):
+#     Z = irm(X, 500, 1, 1, 5, set_seed = False)
+#     sample = retrieve_samples(Z)
+#     print(cluster_summs(sample))
+#     rhos = compute_rho(X, sample)
+#     rho += rhos
+# rho /= n
 
-for i in range(5):
-    X_gen = np.random.binomial(1, rho)
-    trX = np.triu(X_gen)
-    X_gen = np.where(trX, trX, trX.T)
-    # X_gen = np.zeros((len(X), len(X)))
-    # X_gen[rho>0.5] = 1
+# for i in range(5):
+#     X_gen = np.random.binomial(1, rho)
+#     trX = np.triu(X_gen)
+#     X_gen = np.where(trX, trX, trX.T)
+#     # X_gen = np.zeros((len(X), len(X)))
+#     # X_gen[rho>0.5] = 1
 
-    ggen = ig.Graph.Adjacency(X_gen, mode='undirected')
-    print('degree mean', np.mean(ggen.degree()))
-    print('degree std', np.std(ggen.degree()))
-    print('characteristic path length', np.mean(ggen.shortest_paths()))
-    print('')
+#     ggen = ig.Graph.Adjacency(X_gen, mode='undirected')
+#     print('degree mean', np.mean(ggen.degree()))
+#     print('degree std', np.std(ggen.degree()))
+#     print('characteristic path length', np.mean(ggen.shortest_paths()))
+#     print('')
 
-np.mean(ggen.degree())
-np.std(ggen.degree())
-np.mean(g.degree())
-np.std(g.degree())
+# np.mean(ggen.degree())
+# np.std(ggen.degree())
+# np.mean(g.degree())
+# np.std(g.degree())
 
-plt.plot(ggen.degree())
-plt.plot(g.degree())
-
-
-g = ig.Graph.Read_GML('celegansneural.gml')
-X = np.array(g.get_adjacency().data)
-X[X>1] = 1
-
-rho = np.zeros((len(X), len(X)))
-n = 1
-for _ in range(n):
-    Z = irm_directed(X, 500, 1, 1, 20)
-    sample = retrieve_samples(Z)
-    for i in range(len(sample)):
-        sample[i] = sample[i].astype(int)
-    print(cluster_summs(sample))
-    rhos = compute_rho(X, sample, mode ='directed')
-    rho += rhos
-rho /= n
-
-for i in range(5):
-    X_gen = np.random.binomial(1, rho)
-
-    ggen = ig.Graph.Adjacency(X_gen, mode='directed')
-    print('degree mean', np.mean(ggen.degree()))
-    print('degree std', np.std(ggen.degree()))
-    # print('characteristic path length', np.mean(ggen.shortest_paths()))
-    print('')
-
-print('true degree mean: ', np.mean(g.degree()))
-print('true degree std: ', np.std(g.degree()))
-# print('true characteristic path length', np.mean(g.shortest_paths()))
-
-def irm_dir_separate(X, T, a, b, A, random_seed = 42):
-    N = len(X)
-
-    np.random.seed(random_seed)
-
-    X_upper = np.triu(X)
-    X_upper = np.where(X_upper, X_upper, X_upper.T) #make it symmetric
-    print('out')
-    Z_outgoing = irm(X_upper, T, a, b, A, random_seed)
-
-    X_lower = np.tril(X)
-    X_lower = np.where(X_lower, X_lower, X_lower.T) #make it symmetric
-    print('in')
-    Z_incoming = irm(X_lower, T, a, b, A, random_seed)
-    return Z_outgoing, Z_incoming
+# plt.plot(ggen.degree())
+# plt.plot(g.degree())
 
 
-rho_sep = np.zeros((len(X), len(X)))
-rho_out = np.zeros((len(X), len(X)))
-rho_in = np.zeros((len(X), len(X)))
-n = 1
-for _ in range(n):
-    Z_out, Z_in = irm_dir_separate(X, 500, 1, 1, 7)
-    sample_out = retrieve_samples(Z_out)
-    sample_in = retrieve_samples(Z_in)
-    print(cluster_summs(sample_out))
-    print(cluster_summs(sample_in))
+# g = ig.Graph.Read_GML('celegansneural.gml')
+# X = np.array(g.get_adjacency().data)
+# X[X>1] = 1
 
-    Xout = np.triu(X)
-    rhos_out = compute_rho(Xout, sample_out)
-    rho_out += rhos_out
+# rho = np.zeros((len(X), len(X)))
+# n = 1
+# for _ in range(n):
+#     Z = irm_directed(X, 500, 1, 1, 20)
+#     sample = retrieve_samples(Z)
+#     for i in range(len(sample)):
+#         sample[i] = sample[i].astype(int)
+#     print(cluster_summs(sample))
+#     rhos = compute_rho(X, sample, mode ='directed')
+#     rho += rhos
+# rho /= n
 
+# for i in range(5):
+#     X_gen = np.random.binomial(1, rho)
 
-    Xin = np.tril(X)
-    rhos_in = compute_rho(Xin, sample_in)
-    rho_in += rhos_in
+#     ggen = ig.Graph.Adjacency(X_gen, mode='directed')
+#     print('degree mean', np.mean(ggen.degree()))
+#     print('degree std', np.std(ggen.degree()))
+#     # print('characteristic path length', np.mean(ggen.shortest_paths()))
+#     print('')
 
-rho_sep = np.triu(rho_out) + np.tril(rho_in)
-rho_sep /= n
+# print('true degree mean: ', np.mean(g.degree()))
+# print('true degree std: ', np.std(g.degree()))
+# # print('true characteristic path length', np.mean(g.shortest_paths()))
 
-for i in range(5):
-    X_gen = np.random.binomial(1, rho_sep)
-    # trX = np.triu(X_gen)
-    # X_gen = np.where(trX, trX, trX.T)
-    # X_gen = np.zeros((len(X), len(X)))
-    # X_gen[rho>0.5] = 1
+# def irm_dir_separate(X, T, a, b, A, random_seed = 42):
+#     N = len(X)
 
-    ggen = ig.Graph.Adjacency(X_gen, mode='directed')
-    print('degree mean', np.mean(ggen.degree()))
-    print('degree std', np.std(ggen.degree()))
-    print('characteristic path length', np.mean(ggen.shortest_paths()))
-    print('')
+#     np.random.seed(random_seed)
 
+#     X_upper = np.triu(X)
+#     X_upper = np.where(X_upper, X_upper, X_upper.T) #make it symmetric
+#     print('out')
+#     Z_outgoing = irm(X_upper, T, a, b, A, random_seed)
 
-g = ig.Graph.Read_Pajek('datasets/Hi-tech.net')
-X = np.array(g.get_adjacency().data)
-X[X>1] = 1
-
-rho = np.zeros((len(X), len(X)))
-n = 1
-for _ in range(n):
-    Z = irm_directed(X, 500, 1, 1, 10)
-    sample = retrieve_samples(Z)
-    for i in range(len(sample)):
-        sample[i] = sample[i].astype(int)
-    print(cluster_summs(sample))
-    rhos = compute_rho(X, sample, mode ='directed')
-    rho += rhos
-rho /= n
-
-for i in range(5):
-    X_gen = np.random.binomial(1, rho)
-
-    ggen = ig.Graph.Adjacency(X_gen, mode='directed')
-    print('degree mean', np.mean(ggen.degree()))
-    print('degree std', np.std(ggen.degree()))
-    # print('characteristic path length', np.mean(ggen.shortest_paths()))
-    print('')
-
-rho_sep = np.zeros((len(X), len(X)))
-rho_out = np.zeros((len(X), len(X)))
-rho_in = np.zeros((len(X), len(X)))
-n = 1
-for _ in range(n):
-    Z_out, Z_in = irm_dir_separate(X, 500, 1, 1, 7)
-    sample_out = retrieve_samples(Z_out)
-    sample_in = retrieve_samples(Z_in)
-    print(cluster_summs(sample_out))
-    print(cluster_summs(sample_in))
-
-    Xout = np.triu(X)
-    rhos_out = compute_rho(Xout, sample_out)
-    rho_out += rhos_out
+#     X_lower = np.tril(X)
+#     X_lower = np.where(X_lower, X_lower, X_lower.T) #make it symmetric
+#     print('in')
+#     Z_incoming = irm(X_lower, T, a, b, A, random_seed)
+#     return Z_outgoing, Z_incoming
 
 
-    Xin = np.tril(X)
-    rhos_in = compute_rho(Xin, sample_in)
-    rho_in += rhos_in
+# rho_sep = np.zeros((len(X), len(X)))
+# rho_out = np.zeros((len(X), len(X)))
+# rho_in = np.zeros((len(X), len(X)))
+# n = 1
+# for _ in range(n):
+#     Z_out, Z_in = irm_dir_separate(X, 500, 1, 1, 7)
+#     sample_out = retrieve_samples(Z_out)
+#     sample_in = retrieve_samples(Z_in)
+#     print(cluster_summs(sample_out))
+#     print(cluster_summs(sample_in))
 
-rho_sep = np.triu(rho_out) + np.tril(rho_in)
-rho_sep /= n
-
-for i in range(5):
-    X_gen = np.random.binomial(1, rho_sep)
-    # trX = np.triu(X_gen)
-    # X_gen = np.where(trX, trX, trX.T)
-    # X_gen = np.zeros((len(X), len(X)))
-    # X_gen[rho>0.5] = 1
-
-    ggen = ig.Graph.Adjacency(X_gen, mode='directed')
-    print('degree mean', np.mean(ggen.degree()))
-    print('degree std', np.std(ggen.degree()))
-    print('characteristic path length', np.mean(ggen.shortest_paths()))
-    print('')
+#     Xout = np.triu(X)
+#     rhos_out = compute_rho(Xout, sample_out)
+#     rho_out += rhos_out
 
 
+#     Xin = np.tril(X)
+#     rhos_in = compute_rho(Xin, sample_in)
+#     rho_in += rhos_in
 
-print('true degree mean: ', np.mean(g.degree()))
-print('true degree std: ', np.std(g.degree()))
-###############################################################
+# rho_sep = np.triu(rho_out) + np.tril(rho_in)
+# rho_sep /= n
 
-pred = np.array([], int)
-true = np.array([], int)
-for _ in range(5):
-    X_missing, W = create_W(X,prop_links = 0.05, prop_nonlinks = 0.05, rand_=True)
-    Z_missing = irm(X_missing, 1000, 1, 1, 5, set_seed=False)
-    sample_missing = retrieve_samples(Z_missing)
-    rho_missing = compute_rho(X, sample_missing)
+# for i in range(5):
+#     X_gen = np.random.binomial(1, rho_sep)
+#     # trX = np.triu(X_gen)
+#     # X_gen = np.where(trX, trX, trX.T)
+#     # X_gen = np.zeros((len(X), len(X)))
+#     # X_gen[rho>0.5] = 1
 
-    prob_miss = W*rho_missing
-    prob_miss2 = prob_miss[np.triu_indices(len(prob_miss), k=1)].flatten()
-    prob_miss2 = prob_miss2[prob_miss2 > 0]
-    draws = np.random.binomial(1, prob_miss2)
-
-    pred = np.concatenate([pred, draws])
-
-    trW = W[np.triu_indices(len(W), k=1)].flatten()
-    trX = X[np.triu_indices(len(X), k=1)].flatten()
-
-    true = np.concatenate([true, trX[trW == 1]])
+#     ggen = ig.Graph.Adjacency(X_gen, mode='directed')
+#     print('degree mean', np.mean(ggen.degree()))
+#     print('degree std', np.std(ggen.degree()))
+#     print('characteristic path length', np.mean(ggen.shortest_paths()))
+#     print('')
 
 
-fpr, tpr, _ = roc_curve(true, pred)
-roc_auc = auc(fpr, tpr)
+# g = ig.Graph.Read_Pajek('datasets/Hi-tech.net')
+# X = np.array(g.get_adjacency().data)
+# X[X>1] = 1
 
-plt.figure()
-lw = 2
-plt.plot(
-    fpr,
-    tpr,
-    color="darkorange",
-    lw=lw,
-    label="ROC curve (area = %0.2f)" % roc_auc,
-    )
-plt.plot([0, 1], [0, 1], color="navy", lw=lw, linestyle="--")
-plt.xlim([0.0, 1.0])
-plt.ylim([0.0, 1.05])
-plt.xlabel("False Positive Rate")
-plt.ylabel("True Positive Rate")
-plt.title("Receiver operating characteristic example")
-plt.legend(loc="lower right")
-plt.show()
+# rho = np.zeros((len(X), len(X)))
+# n = 1
+# for _ in range(n):
+#     Z = irm_directed(X, 500, 1, 1, 10)
+#     sample = retrieve_samples(Z)
+#     for i in range(len(sample)):
+#         sample[i] = sample[i].astype(int)
+#     print(cluster_summs(sample))
+#     rhos = compute_rho(X, sample, mode ='directed')
+#     rho += rhos
+# rho /= n
+
+# for i in range(5):
+#     X_gen = np.random.binomial(1, rho)
+
+#     ggen = ig.Graph.Adjacency(X_gen, mode='directed')
+#     print('degree mean', np.mean(ggen.degree()))
+#     print('degree std', np.std(ggen.degree()))
+#     # print('characteristic path length', np.mean(ggen.shortest_paths()))
+#     print('')
+
+# rho_sep = np.zeros((len(X), len(X)))
+# rho_out = np.zeros((len(X), len(X)))
+# rho_in = np.zeros((len(X), len(X)))
+# n = 1
+# for _ in range(n):
+#     Z_out, Z_in = irm_dir_separate(X, 500, 1, 1, 7)
+#     sample_out = retrieve_samples(Z_out)
+#     sample_in = retrieve_samples(Z_in)
+#     print(cluster_summs(sample_out))
+#     print(cluster_summs(sample_in))
+
+#     Xout = np.triu(X)
+#     rhos_out = compute_rho(Xout, sample_out)
+#     rho_out += rhos_out
+
+
+#     Xin = np.tril(X)
+#     rhos_in = compute_rho(Xin, sample_in)
+#     rho_in += rhos_in
+
+# rho_sep = np.triu(rho_out) + np.tril(rho_in)
+# rho_sep /= n
+
+# for i in range(5):
+#     X_gen = np.random.binomial(1, rho_sep)
+#     # trX = np.triu(X_gen)
+#     # X_gen = np.where(trX, trX, trX.T)
+#     # X_gen = np.zeros((len(X), len(X)))
+#     # X_gen[rho>0.5] = 1
+
+#     ggen = ig.Graph.Adjacency(X_gen, mode='directed')
+#     print('degree mean', np.mean(ggen.degree()))
+#     print('degree std', np.std(ggen.degree()))
+#     print('characteristic path length', np.mean(ggen.shortest_paths()))
+#     print('')
+
+
+
+# print('true degree mean: ', np.mean(g.degree()))
+# print('true degree std: ', np.std(g.degree()))
+# ###############################################################
+
+# pred = np.array([], int)
+# true = np.array([], int)
+# for _ in range(5):
+#     X_missing, W = create_W(X,prop_links = 0.05, prop_nonlinks = 0.05, rand_=True)
+#     Z_missing = irm(X_missing, 1000, 1, 1, 5, set_seed=False)
+#     sample_missing = retrieve_samples(Z_missing)
+#     rho_missing = compute_rho(X, sample_missing)
+
+#     prob_miss = W*rho_missing
+#     prob_miss2 = prob_miss[np.triu_indices(len(prob_miss), k=1)].flatten()
+#     prob_miss2 = prob_miss2[prob_miss2 > 0]
+#     draws = np.random.binomial(1, prob_miss2)
+
+#     pred = np.concatenate([pred, draws])
+
+#     trW = W[np.triu_indices(len(W), k=1)].flatten()
+#     trX = X[np.triu_indices(len(X), k=1)].flatten()
+
+#     true = np.concatenate([true, trX[trW == 1]])
+
+
+# fpr, tpr, _ = roc_curve(true, pred)
+# roc_auc = auc(fpr, tpr)
+
+# plt.figure()
+# lw = 2
+# plt.plot(
+#     fpr,
+#     tpr,
+#     color="darkorange",
+#     lw=lw,
+#     label="ROC curve (area = %0.2f)" % roc_auc,
+#     )
+# plt.plot([0, 1], [0, 1], color="navy", lw=lw, linestyle="--")
+# plt.xlim([0.0, 1.0])
+# plt.ylim([0.0, 1.05])
+# plt.xlabel("False Positive Rate")
+# plt.ylabel("True Positive Rate")
+# plt.title("Receiver operating characteristic example")
+# plt.legend(loc="lower right")
+# plt.show()

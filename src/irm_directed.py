@@ -2,12 +2,13 @@ import igraph as ig
 import numpy as np
 from scipy.special import betaln
 
-def irm_directed(X, T, a, b, A, random_seed = 42):
+def irm_directed(X, T, a, b, A, set_seed = True, random_seed = 42):
     N = len(X)
     z = np.ones([N,1])
     Z = []
 
-    np.random.seed(random_seed)
+    if set_seed:
+        np.random.seed(random_seed)
 
     for t in range(T): # for T iterations
         print(t)
@@ -16,14 +17,20 @@ def irm_directed(X, T, a, b, A, random_seed = 42):
             nn = [_ for _ in range(N)]  
             nn.remove(n) 
 
-            if z.shape[1] > 1:
-                idx = np.argwhere(np.all(z[nn, :] == 0, axis=0))
-                z = np.delete(z, idx, axis=1)
+            # if z.shape[1] > 1:
+            #     idx = np.argwhere(np.all(z[nn, :] == 0, axis=0))
+            #     z = np.delete(z, idx, axis=1)
 
             X_ = X[np.ix_(nn,nn)] #adjacency matrix without currently sampled node
 
             # K = n. of components
             K = len(z[0]) 
+
+            # Delete empty component if present
+            if K > 1:
+                idx = np.argwhere(np.sum(z[nn], 0) == 0)
+                z = np.delete(z, idx, axis=1)
+                K -= len(idx)
 
             # m = n. of nodes in each component 
             m = np.sum(z[nn,:], 0)[np.newaxis] #newaxis allows m to become 2d array (for transposing)

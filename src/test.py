@@ -298,7 +298,9 @@ Z = irm_directed(X, T, a, b, A)
 
 
 
+g = ig.Graph.Read_Pajek('datasets/Hi-tech.net')
 
+g = ig.Graph.Read_Pajek('datasets/centrality_literature.net')
 
 
 

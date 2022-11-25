@@ -102,24 +102,7 @@ def irm_directed(X, T, a, b, A, set_seed = True, random_seed = 42, print_iter = 
                 z = np.hstack((z, np.zeros((N,1)))) 
             z[n,i] = 1
 
-        Z.append(z)
+        Z.append(z.copy())
     return Z 
 
-
-g = ig.Graph.Read_GML('celegansneural.gml')
-X = np.array(g.get_adjacency().data)
-X[X>1] = 1
-
-
-N = len(X)
-z = np.ones([N,1])
-Z = []
-
-np.random.seed(42)
-T = 500
-a = 1
-b = 1
-A = 20
-
-#Z = irm_directed(X, T, a, b, A)
 

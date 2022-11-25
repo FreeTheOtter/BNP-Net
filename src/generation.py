@@ -1,6 +1,6 @@
 import numpy as np
 
-def generate_graph(S, thetas = 'random', type = 'undirected', ret_thetas = False):
+def generate_graph(S, thetas = 'random', type = 'undirected', ret_thetas = False, random_seed = None):
     N = np.sum(S)
     K = len(S)
 
@@ -11,7 +11,10 @@ def generate_graph(S, thetas = 'random', type = 'undirected', ret_thetas = False
             H += [c]
         c+=1
 
-    if np.all(thetas) == 'random':
+    if isinstance(random_seed, int):
+        np.random.seed(random_seed)
+        
+    if isinstance(thetas, str) and thetas == 'random':
         thetas = np.zeros((K,K))
         for i in range(K):
             for j in range(K):

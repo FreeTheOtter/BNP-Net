@@ -4,12 +4,13 @@ from scipy.special import betaln
 from irm_undirected import irm
 from irm_directed import irm_directed
 
-def irm_directed_separate(X, T, a, b, A, random_seed = 42):
+def irm_directed_separate(X, T, a, b, A, set_seed = True, random_seed = 42):
     N = len(X)
     z = np.ones([N,1])
     Z = []
 
-    np.random.seed(random_seed)
+    if set_seed:
+        np.random.seed(random_seed)
 
     X_upper = np.triu(X)
     X_upper = np.where(X_upper, X_upper, X_upper.T) #make it symmetric

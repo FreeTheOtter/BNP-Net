@@ -2,7 +2,7 @@ import igraph as ig
 import numpy as np
 from scipy.special import betaln
 
-def irm(X, T, a, b, A, set_seed = True, random_seed = 42):
+def irm_undirected(X, T, a, b, A, set_seed = True, random_seed = 42, print_iter = False):
     N = len(X)
     z = np.ones([N,1])
     Z = []
@@ -11,6 +11,8 @@ def irm(X, T, a, b, A, set_seed = True, random_seed = 42):
         np.random.seed(random_seed)
 
     for t in range(T): # for T iterations
+        if print_iter:
+            print(t)
         for n in range(N): # for each node n
 
             #nn = index mask without currently sampled node n

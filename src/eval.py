@@ -1,9 +1,6 @@
 import numpy as np
 import igraph as ig
 import matplotlib.pyplot as plt
-from irm_undirected import irm
-from irm_directed import irm_directed
-from irm_directed_separate import irm_directed_separate
 from sklearn.metrics import roc_curve, auc, roc_auc_score
 from generation import generate_graph
 
@@ -31,16 +28,17 @@ def cluster_summs(Z, ret = False):
     if ret:
         return temp_Z
 
-def compute_rhos(X, Z, a=1, b=1, mode = 'undirected'):    
+def compute_rhos(X, Z, a=1, b=1, edge_type = 'undirected', edge_weight = 'binary', mode = 'normal'):    
     A = np.array([np.where(Z[i,:] == 1)[0] for i in range(len(Z))]).flatten()
-    if mode == 'undirected':
+
+    if edge_type == 'undirected':
         M1 = Z.T @ X @ Z - np.diag(np.sum(X@Z*Z, 0) / 2) 
 
         m = np.sum(Z, 0)[np.newaxis]
 
         M0 = m.T@m - np.diag((m*(m+1) / 2).flatten()) - M1 
 
-    elif mode == 'directed':
+    elif edge_type == 'directed':
         M1 = Z.T @ X @ Z
 
         m = np.sum(Z, 0)[np.newaxis]
@@ -57,10 +55,10 @@ def compute_rhos(X, Z, a=1, b=1, mode = 'undirected'):
             rhos[i,j] += (links + a) / (links + non_links + a + b)
     return rhos
 
-def compute_rho(X, sample, mode = 'undirected'):
+def compute_rho(X, sample, edge_type = 'undirected', edge_weight = 'binary', mode = 'normal'):
     rhos = np.zeros((len(X), len(X)))
     for i in sample:
-        rhos += compute_rhos(X, i, mode = mode)
+        rhos += compute_rhos(X, i, edge_type = edge_type, edge_weight = edge_weight, mode = mode)
     
     rhos /= len(sample)
     return rhos

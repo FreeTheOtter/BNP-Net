@@ -19,15 +19,12 @@ def irm(X, T, a, b, A, set_seed = False, random_seed = 42, print_iter = False,
         if edge_weight == 'binary':
             if mode == 'normal':
                 Z = irm_directed(X, T, a, b, A , set_seed, random_seed, print_iter)
-            elif mode == 'separate':
-                Z_out, Z_in = irm_directed_separate(X, T, a, b, A , set_seed, random_seed, print_iter)
+            elif mode == 'separate': # in this case, Z is a list of [Z_out, Z_in]
+                Z = irm_directed_separate(X, T, a, b, A , set_seed, random_seed, print_iter)
         
         elif edge_weight == 'integer':
             if mode == 'normal':
                 Z = irm_directed_weighted(X, T, a, b, A , set_seed, random_seed, print_iter)
 
     
-    if mode == 'normal':
-        return Z
-    elif mode == 'separate':
-        return Z_out, Z_in
+    return Z

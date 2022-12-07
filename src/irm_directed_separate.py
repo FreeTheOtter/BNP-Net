@@ -19,3 +19,5 @@ def irm_directed_separate(X, T, a, b, A, set_seed = True, random_seed = 42, prin
 
     Z_incoming = irm_undirected(X_lower, T, a, b, A, set_seed, random_seed, print_iter)
     return [Z_outgoing, Z_incoming]
+
+

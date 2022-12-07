@@ -120,3 +120,6 @@ def draw_roc(X, rhos):
     plt.title("ROC")
     plt.legend(loc="lower right")
     plt.show()
+
+def post_cc(Z):
+    

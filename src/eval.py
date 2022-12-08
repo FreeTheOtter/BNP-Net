@@ -3,6 +3,8 @@ import igraph as ig
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc, roc_auc_score
 from generation import generate_graph
+from igraph.clustering import compare_communities
+from scipy.special import betaln
 
 
 def retrieve_samples(Z, gap = 25, burn_in = True):
@@ -150,3 +152,106 @@ def generate_graph_bicluster(Sr, Sc, thetas):
 
     return X
 
+def compute_VIs(C):
+    N = len(C)
+    VIs = np.zeros((N,N))
+
+    for i in range(N):
+        for j in range(i):
+            VIs[i,j] = compare_communities(C[i], C[j])
+
+    VIs += VIs.T
+
+    return VIs
+
+def compute_edge_quantities(X, zr, zc = None, mode = 'biclustering'):
+    if mode == 'uniclustering':
+        M1 = zr.T @ X @ zr
+        X = X.copy().astype(int)
+        X_rev = (np.where((X==0)|(X==1), X^1, X) - np.eye(X.shape[0])).copy() #reverse matrix for non_links
+        M0 = zr.T @ X_rev @ zr
+
+
+    if mode == 'biclustering':
+        M1 = zr.T @ X @ zc
+
+        X = X.copy().astype(int)
+        X_rev = (np.where((X==0)|(X==1), X^1, X) - np.eye(X.shape[0])).copy() #reverse matrix for non_links
+        M0 = zr.T @ X_rev @ zc
+
+    return M1, M0
+
+def compute_logL(X, zr, zc = None, a=1, b=1, mode = 'biclustering'):
+    if mode == 'uniclustering':
+        M1, M0 = compute_edge_quantities(X, zr, mode = 'uniclustering')
+        
+
+    if mode == 'biclustering':
+        M1, M0 = compute_edge_quantities(X, zr, zc, mode = 'biclustering')
+    
+    logLlhood = np.sum(betaln(M1 + a, M0 + b) - betaln(a, b))
+    return logLlhood
+
+# def compute_logL_bicl(X, zr, zc, a=1, b=1):
+#     M1, M0 = compute_edge_quantities(X, zr, zc, mode = 'biclustering')
+#     logLlhood = np.sum(betaln(M1 + a, M0 + b) - betaln(a, b))
+#     return logLlhood
+
+
+
+def compute_logLs(X, Z, mode = 'biclustering'):
+    if mode == 'uniclustering':
+        N = len(Z)
+        logLs = [0]*N
+        for i in range(N):
+            logLs[i] = compute_logL(X, Z[i], mode = 'uniclustering')
+    if mode == 'biclustering':
+        N = len(Z[0])
+        logLs = [0]*N
+        for i in range(N):
+            logLs[i] = compute_logL(X, Z[0][i], Z[1][i], mode = 'biclustering')
+
+    return logLs
+
+def compute_Zhat(X, Z, mode = 'biclustering', weight_llhood = False, return_VI = False,return_idx = False):
+    if mode == 'uniclustering':
+        Z = retrieve_samples(Z, gap = 10)
+
+        C = [np.where(x == 1)[1].tolist() for x in Z]
+
+        VI = compute_VIs(C)
+        VI = VI.sum(0)/VI.shape[0]
+
+        if weight_llhood == True:
+            logLs = compute_logLs(X, Z, mode = 'uniclustering')
+            VI *= -logLs        
+
+        idx_min = np.argmin(VI) 
+        z_hat = Z[idx_min]
+        c_hat = np.where(z_hat==1)[1]
+
+    if mode == 'biclustering':
+        Zr = retrieve_samples(Z[0], gap = 10)
+        Zc = retrieve_samples(Z[1], gap = 10)
+
+        Cr = [np.where(x == 1)[1].tolist() for x in Zr]
+        Cc = [np.where(x == 1)[1].tolist() for x in Zc]
+
+        VIr = compute_VIs(Cr)
+        VIc = compute_VIs(Cc)
+
+        VI = (VIr + VIc)/2
+        VI = VI.sum(0)/VI.shape[0]
+
+        if weight_llhood == True:
+            logLs = compute_logLs(X, [Zr, Zc], mode = 'biclustering')
+            VI *= -logLs
+
+        idx_min = np.argmin(VI) 
+        z_hat = [Zr[idx_min], Zc[idx_min]]
+        c_hat = [np.where(z_hat[0]==1)[1], np.where(z_hat[1]==1)[1]]
+
+    if return_VI:
+        return z_hat, VI
+
+    return z_hat

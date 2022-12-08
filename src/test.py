@@ -266,6 +266,7 @@ def irm_directed(X, T, a, b, A, random_seed = 42):
         # Assignment of current node to component i
         z[n,:] = 0
         if i == K: # If new component: add new column to partition matrix
+        
             z = np.hstack((z, np.zeros((N,1)))) 
         z[n,i] = 1
 

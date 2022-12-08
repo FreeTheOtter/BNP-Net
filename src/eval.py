@@ -121,5 +121,32 @@ def draw_roc(X, rhos):
     plt.legend(loc="lower right")
     plt.show()
 
-def post_cc(Z):
-    
+def generate_graph_bicluster(Sr, Sc, thetas):
+    # Kr = thetas.shape[0]
+    # Kc = thetas.shape[1]
+
+    N = np.sum(Sr)
+
+    Hr = []
+    c = 0
+    for i in Sr:
+        for j in range(i):
+            Hr += [c]
+        c+=1
+
+    Hc = []
+    c = 0
+    for i in Sc:
+        for j in range(i):
+            Hc += [c]
+        c+=1
+
+    X = np.zeros((N,N))
+    for i in range(N):
+        for j in range(N):
+            if i == j:
+                continue
+            X[i, j] = np.random.binomial(1, thetas[Hr[i], Hc[j]])
+
+    return X
+

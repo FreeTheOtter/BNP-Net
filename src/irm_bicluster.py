@@ -6,6 +6,7 @@ def irm_bicluster(X, T, a, b, A, set_seed = True, random_seed = 42, print_iter =
     N = len(X)
     zr = np.ones([N, 1])
     zc = np.ones([N, 1])
+    Z = []
     Zr = []
     Zc = []
 
@@ -17,7 +18,7 @@ def irm_bicluster(X, T, a, b, A, set_seed = True, random_seed = 42, print_iter =
             nn = [_ for _ in range(N)]
             nn.remove(n)
 
-            X_ = X.copy()
+            X_ = X.copy().astype(int)
             X_[n,:] = 0
 
             Kr = len(zr[0])
@@ -63,7 +64,7 @@ def irm_bicluster(X, T, a, b, A, set_seed = True, random_seed = 42, print_iter =
             nn = [_ for _ in range(N)]
             nn.remove(n)
 
-            X_ = X.copy()
+            X_ = X.copy().astype(int)
             X_[:,n] = 0
 
             Kc = len(zc[0])
@@ -106,7 +107,8 @@ def irm_bicluster(X, T, a, b, A, set_seed = True, random_seed = 42, print_iter =
                 zc = np.hstack((zc, np.zeros((N,1)))) 
             zc[n,i] = 1
 
+        Z.append([zr.copy(), zc.copy()])
         Zr.append(zr.copy())
         Zc.append(zc.copy())
     
-    return np.array([Zr, Zc])
+    return [Zr, Zc]

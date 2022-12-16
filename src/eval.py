@@ -213,7 +213,7 @@ def compute_logLs(X, Z, mode = 'biclustering'):
 
     return logLs
 
-def compute_Zhat(X, Z, mode = 'biclustering', weight_llhood = False, return_VI = False,return_idx = False):
+def compute_Zhat(X, Z, mode = 'biclustering', weight_llhood = False, ret_VI = False, ret_all = False):
     if mode == 'uniclustering':
         Z = retrieve_samples(Z, gap = 10)
 
@@ -251,7 +251,10 @@ def compute_Zhat(X, Z, mode = 'biclustering', weight_llhood = False, return_VI =
         z_hat = [Zr[idx_min], Zc[idx_min]]
         c_hat = [np.where(z_hat[0]==1)[1], np.where(z_hat[1]==1)[1]]
 
-    if return_VI:
-        return z_hat, VI
+    if ret_all:
+        return [Zr, Zc], VI, idx_min
+
+    if ret_VI:
+        return z_hat, VI[idx_min]
 
     return z_hat

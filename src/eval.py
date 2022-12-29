@@ -30,34 +30,36 @@ def cluster_summs(Z, ret = False):
     if ret:
         return temp_Z
 
-def compute_rhos(X, Z, a=1, b=1, edge_type = 'undirected', edge_weight = 'binary', mode = 'normal'):    
-    A = np.array([np.where(Z[i,:] == 1)[0] for i in range(len(Z))]).flatten()
+def compute_rhos(X, Z, a=1, b=1, edge_type = 'directed', edge_weight = 'binary', mode = 'normal'):
+    if mode == 'normal':    
+        A = np.array([np.where(Z[i,:] == 1)[0] for i in range(len(Z))]).flatten()
 
-    if edge_type == 'undirected':
-        M1 = Z.T @ X @ Z - np.diag(np.sum(X@Z*Z, 0) / 2) 
+        if edge_type == 'undirected':
+            M1 = Z.T @ X @ Z - np.diag(np.sum(X@Z*Z, 0) / 2) 
 
-        m = np.sum(Z, 0)[np.newaxis]
+            m = np.sum(Z, 0)[np.newaxis]
 
-        M0 = m.T@m - np.diag((m*(m+1) / 2).flatten()) - M1 
+            M0 = m.T@m - np.diag((m*(m+1) / 2).flatten()) - M1 
 
-    elif edge_type == 'directed':
-        M1 = Z.T @ X @ Z
+        elif edge_type == 'directed':
+            M1 = Z.T @ X @ Z
 
-        m = np.sum(Z, 0)[np.newaxis]
-        M0 = m.T@m - np.diag(m.flatten()) - M1
+            m = np.sum(Z, 0)[np.newaxis]
+            M0 = m.T@m - np.diag(m.flatten()) - M1
 
-    rhos = np.zeros((len(X), len(X)))
+        rhos = np.zeros((len(X), len(X)))
 
-    for i in range(len(X)):
-        for j in range(len(X)):
-            if i == j:
-                continue
-            links = M1[A[i], A[j]]
-            non_links = M0[A[i], A[j]]
-            rhos[i,j] += (links + a) / (links + non_links + a + b)
+        for i in range(len(X)):
+            for j in range(len(X)):
+                if i == j:
+                    continue
+                links = M1[A[i], A[j]]
+                non_links = M0[A[i], A[j]]
+                rhos[i,j] += (links + a) / (links + non_links + a + b)
+    # elif mode == 'biclustering':
     return rhos
 
-def compute_rho(X, sample, edge_type = 'undirected', edge_weight = 'binary', mode = 'normal'):
+def compute_rho(X, sample, edge_type = 'directed', edge_weight = 'binary', mode = 'normal'):
     rhos = np.zeros((len(X), len(X)))
     for i in sample:
         rhos += compute_rhos(X, i, edge_type = edge_type, edge_weight = edge_weight, mode = mode)

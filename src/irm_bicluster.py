@@ -82,7 +82,7 @@ def irm_bicluster(X, T, a, b, A, set_seed = True, random_seed = 42, print_iter =
             M1 = zr.T @ X_ @ zc
 
             X_rev = (np.where((X_==0)|(X_==1), X_^1, X_) - np.eye(X_.shape[0])).copy() #reverse matrix for non_links
-            X_rev[:,0] = 0
+            X_rev[:,n] = 0
             M0 = zr.T @ X_rev @ zc #n. of non-links between biclusters without current node
 
             s = zr[nn,:].T @ X[nn, n]

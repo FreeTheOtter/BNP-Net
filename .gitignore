@@ -7,3 +7,5 @@ src/evaluation.ipynb
 src/Simulation.ipynb
 Testing/
 Datasets/
+df_area.csv
+test_area_rob.ipynb

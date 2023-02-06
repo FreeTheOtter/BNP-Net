@@ -9,7 +9,11 @@ class smb():
     """
     
     def __init__(self, setup,
-                prior_r = None, prior_c = None,
+                prior_r = "DP", prior_c = "DP",
+                alpha_PY_r = None, alpha_PY_c = None,
+                sigma_PY_r = None, sigma_PY_c = None,
+                beta_DM_r = None, beta_DM_c = None, K_DM_r = None, K_DM_c = None,
+                gamma_GN_r = None, gamma_GN_c = None,
                 a = 1, b = 1, set_seed = False
                 ):
 
@@ -21,6 +25,18 @@ class smb():
         self.prior_r = prior_r
         self.prior_c = prior_c
 
+        self.alpha_PY_r = alpha_PY_r
+        self.alpha_PY_c = alpha_PY_c
+        self.sigma_PY_r = sigma_PY_r
+        self.sigma_PY_c = sigma_PY_c
+        self.beta_DM_r = beta_DM_r
+        self.beta_DM_c = beta_DM_c
+        self.K_star_DM_r = K_DM_r
+        self.K_star_DM_c = K_DM_c
+        self.gamma_GN_r = gamma_GN_r
+        self.gamma_GN_c = gamma_GN_c
+
+        self.evalPrior()
 
         self.a = a
         self.b = b
@@ -28,11 +44,31 @@ class smb():
         if isinstance(set_seed, int):
             np.random.seed(set_seed)
 
+    def evalPrior(self, nn, direction == "rows"):
+        if direction == "rows":
+            if self.prior_r == "DP":
+                return self.prior_DP(np.sum(self.zr[nn,:], 0)[np.newaxis], self.alpha_PY_r)
+            elif self.prior_r == "PY":
+                return self.prior_PY(np.sum(self.zr[nn,:], 0)[np.newaxis], self.alpha_PY_r, self.sigma_PY_r)
+            elif self.prior_r == "DM":
+                return self.prior_DM(np.sum(self.zr[nn,:], 0)[np.newaxis], self.beta_DM_r, self.K_star_DM_r)
+            elif self.prior_r == "GN":
+                return self.prior_GN(np.sum(self.zr[nn,:], 0)[np.newaxis], self.gamma_GN_r)
+        else:
+            if self.prior_c == "DP":
+                return self.prior_DP(np.sum(self.zc[nn,:], 0)[np.newaxis], self.alpha_PY_c)
+            elif self.prior_c == "PY":
+                return self.prior_PY(np.sum(self.zc[nn,:], 0)[np.newaxis], self.alpha_PY_c, self.sigma_PY_c)
+            elif self.prior_c == "DM":
+                return self.prior_DM(np.sum(self.zc[nn,:], 0)[np.newaxis], self.beta_DM_c, self.K_star_DM_c)
+            elif self.prior_c == "GN":
+                return self.prior_GN(np.sum(self.zc[nn,:], 0)[np.newaxis], self.gamma_GN_c)
+
     def fit(self, X, T):
         self.X = X
 
         self.X_bin = self.X.copy()
-        self.X_bin[X_bin>0] = 1
+        self.X_bin[self.X_bin>0] = 1
 
         self.T = T
         self.N = len(self.X)
@@ -63,9 +99,10 @@ class smb():
                     self.z = np.delete(self.z, idx, axis=1)
                     K -= len(idx)
 
-                loglikelihood = self.evalLikelihood(nn, K, self.directed, self.binary):
+                logLikelihood = self.evalLikelihood(nn, n, K, self.directed, self.binary)
 
-                logPrior = np.log(np.append(m, self.A)) #TODO: Priors
+                logPrior = np.log(self.evalPrior(nn, self.unicluster))
+                # logPrior = np.log(np.append(m, self.A)) #TODO: Priors
 
                 logPosterior = logPrior + logLikelihood
 
@@ -207,7 +244,7 @@ class smb():
                 self.zc = np.hstack([self.zc, np.zeros(self.N,1)]) 
             self.zc[n,i] = 1
     
-    def evalLikelihood(nn, K, directed, binary):
+    def evalLikelihood(self, nn, n, K, directed, binary):
         X_ = self.X[np.ix_(nn,nn)] #adjacency matrix without currently sampled node
 
         if directed:
@@ -328,7 +365,7 @@ class smb():
                             + (self.b)*np.log(self.a) - (np.hstack([r,s]) + self.a)*np.log(np.hstack([r_bin,s_bin]) + self.b) \
                             - np.hstack([f_out, f_in]))[np.newaxis]
 
-                logLikelihood = np.concatenate([likelihood, likelihood_n])                
+                logLikelihood = np.concatenate([logLikelihood_old, logLikelihood_new])                
         else:
             if binary: #undirected binary
                 # m = n. of nodes in each component 
@@ -356,6 +393,19 @@ class smb():
                 pass
 
         return logLikelihood
+    
+    def prior_DP(self, m, alpha):
+        return np.append(m, alpha)
+    
+    def prior_PY(self, m, alpha, sigma):
+        return np.append(m-sigma, alpha+len(m)*sigma)
+
+    def prior_DM(self, m, beta, K_star):
+        return np.append(m + beta, beta * (K_star - len(m)) * (K_star > len(m)))
+    
+    def prior_GN(self, m , gamma):
+        return np.append((m + 1) * (np.sum(m) - len(m) + gamma), len(m)^2 - len(m)*gamma)
+    
 
     # def gibbs_sweep(self, n, directed, binary):
     #     nn = list(self.idx_list)

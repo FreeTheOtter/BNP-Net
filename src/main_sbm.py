@@ -21,7 +21,6 @@ class SBM():
         self.binary = setup['binary']
         self.unicluster = setup['unicluster']
 
-        self.A = 1 #temporary prior DP
         self.prior_r = prior_r
         self.prior_c = prior_c
 
@@ -38,8 +37,49 @@ class SBM():
         self.a = a
         self.b = b
 
+        self.checkPriorParameters()
+
         if isinstance(set_seed, int):
             np.random.seed(set_seed)
+
+    def checkPriorParameters(self):
+        # Sanity check if the correct parameters have been inputted for the desired prior
+        if self.unicluster:
+            if self.prior_r == "DP":
+                assert (self.alpha_PY_r is not None), "alpha_PY_r missing for DP prior"
+            if self.prior_r == "PY":
+                assert (self.alpha_PY_r is not None), "alpha_PY_r missing for PY prior"
+                assert (self.sigma_PY_r is not None), "sigma_PY_r missing for PY prior"
+                #Potential check for sigma outside of range
+            if self.prior_r == "DM":
+                assert (self.beta_DM_r is not None), "beta_DM_r missing for DM prior"
+                assert (self.K_star_DM_r is not None), "K_star_r missing for DM prior"
+            if self.prior_r == "GN":
+                assert (self.gamma_GN_r is not None), "gamma_GN_r missing for GN prior"
+        else:
+            if self.prior_r == "DP":
+                assert (self.alpha_PY_r is not None), "alpha_PY_r missing for DP row prior"
+            if self.prior_r == "PY":
+                assert (self.alpha_PY_r is not None), "alpha_PY_r missing for PY row prior"
+                assert (self.sigma_PY_r is not None), "sigma_PY_r missing for PY row prior"
+                #Potential check for sigma outside of range
+            if self.prior_r == "DM":
+                assert (self.beta_DM_r is not None), "beta_DM_r missing for DM row prior"
+                assert (self.K_star_DM_r is not None), "K_star_r missing for DM row prior"
+            if self.prior_r == "GN":
+                assert (self.gamma_GN_r is not None), "gamma_GN_r missing for GN row prior"
+
+            if self.prior_c == "DP":
+                assert (self.alpha_PY_c is not None), "alpha_PY_c missing for DP column prior"
+            if self.prior_c == "PY":
+                assert (self.alpha_PY_c is not None), "alpha_PY_c missing for PY column prior"
+                assert (self.sigma_PY_c is not None), "sigma_PY_c missing for PY column prior"
+                #Potential check for sigma outside of range
+            if self.prior_c == "DM":
+                assert (self.beta_DM_c is not None), "beta_DM_c missing for DM column prior"
+                assert (self.K_star_DM_c is not None), "K_star_c missing for DM column prior"
+            if self.prior_c == "GN":
+                assert (self.gamma_GN_c is not None), "gamma_GN_c missing for GN column prior"
 
     def evalPrior(self, nn, direction = "rows"):
         if self.unicluster:
@@ -394,6 +434,7 @@ class SBM():
     
     def evalLikelihoodBicluster(self, nn, n, K, binary, direction = "rows"):
         X_ = self.X.copy().astype(int)
+        X_bin_ = self.X_bin.copy().astype(int)
         if direction == "rows":
             if binary: #directed binary
                 X_[n,:] = 0 #adj matrix without currently sampled node rows
@@ -421,7 +462,33 @@ class SBM():
 
                 
             else: #weighted
-                pass
+                X_[n,:] = 0
+                X_bin_[n,:] = 0
+
+                LM = self.zr.T @ X_ @ self.zc
+
+                r = self.zr[nn,:].T @ self.X[n, nn]
+                LM_n = np.tile(r, (K, 1))
+
+                r_bin = self.zr[nn,:].T @ self.X_bin[n, nn]
+                LM_n_bin = np.tile(r_bin, (K,1))
+
+                C = self.zr.T @ X_bin_ @ self.zc #CHECK
+
+                f = np.sum(gammaln(np.multiply(self.z[nn,:].T, self.X[n, nn]) + 1), axis = 1)
+                F = np.tile(f, (K, 1))
+                
+
+                logLikelihood_old = np.sum(gammaln(LM + LM_n + self.a) - gammaln(LM + self.a) \
+                            + (LM + self.a)*np.log(C + self.b) - (LM + LM_n + self.a)*np.log(C + LM_n_bin + self.b) \
+                            - F, 1)
+
+                logLikelihood_new = np.sum(gammaln(r + self.a) - gammaln(self.a) \
+                            + (self.b)*np.log(self.a) - (r + self.a)*np.log(r_bin + self.b) \
+                            - f)[np.newaxis]
+
+                logLikelihood = np.concatenate([logLikelihood_old, logLikelihood_new])
+
         elif direction == "columns":
             if binary:
                 X_[:,n] = 0 #adj matrix without currently sampled node columns
@@ -436,7 +503,7 @@ class SBM():
                 X_rev[:,n] = 0
                 NLM = self.zr.T @ X_rev @ self.zc #n. of non-links between biclusters without current node
 
-                s = self.zr[nn,:].T @ self.X[nn, n]
+                s = self.zc[nn,:].T @ self.X[nn, n]
                 S = np.tile(s[np.newaxis].T, (1, K))
 
                 logLikelihood_new = np.sum(betaln(LM + S + self.a, NLM + Mr - S + self.b) \
@@ -448,6 +515,34 @@ class SBM():
                                         , 1)
 
                 logLikelihood = np.concatenate([logLikelihood_new, logLikelihood_old])
+            
+            else:
+                X_[:,n] = 0
+                X_bin_[:,n] = 0
+
+                LM = self.zr.T @ X_ @ self.zc
+
+                s = self.zc[nn,:].T @ self.X[nn, n]
+                LM_n = np.tile(s[np.newaxis].T, (1, K))
+
+                s_bin = self.zc[nn,:].T @ self.X_bin[nn, n]
+                LM_n_bin = np.tile(s_bin[np.newaxis].T, (1,K))
+
+                C = self.zr.T @ X_bin_ @ self.zc #CHECK
+
+                f = np.sum(gammaln(np.multiply(self.zc[nn,:].T, self.X[nn, n].T) + 1), axis = 1) #CHECK
+                F = np.tile(f, (K, 1))
+                
+
+                logLikelihood_old = np.sum(gammaln(LM + LM_n + self.a) - gammaln(LM + self.a) \
+                            + (LM + self.a)*np.log(C + self.b) - (LM + LM_n + self.a)*np.log(C + LM_n_bin + self.b) \
+                            - F, 1)
+
+                logLikelihood_new = np.sum(gammaln(r + self.a) - gammaln(self.a) \
+                            + (self.b)*np.log(self.a) - (r + self.a)*np.log(r_bin + self.b) \
+                            - f)[np.newaxis]
+
+                logLikelihood = np.concatenate([logLikelihood_old, logLikelihood_new])
 
         return logLikelihood
 

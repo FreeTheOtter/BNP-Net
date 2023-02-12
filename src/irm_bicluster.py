@@ -85,7 +85,7 @@ def irm_bicluster(X, T, a, b, A, set_seed = True, random_seed = 42, print_iter =
             X_rev[:,n] = 0
             M0 = zr.T @ X_rev @ zc #n. of non-links between biclusters without current node
 
-            s = zr[nn,:].T @ X[nn, n]
+            s = zc[nn,:].T @ X[nn, n]
             S = np.tile(s[np.newaxis].T, (1, Kc))
 
             logLik_exComp = np.sum(betaln(M1+S+a, M0+Mr-S+b) - betaln(M1+a, M0+b), 0)

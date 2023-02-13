@@ -110,15 +110,18 @@ class SBM():
 
                 logPrior = np.log(self.evalPrior(nn, self.unicluster))
                 # logPrior = np.log(np.append(m, self.A)) #TODO: Priors
-
+                
                 logPosterior = logPrior + logLikelihood
+                # print("Post: ",logPosterior)
 
                 # Convert from log probabilities, normalized to max
                 p = np.exp(logPosterior-max(logPosterior)) 
-
+                # print("prob: ", p)
+                # print(np.cumsum(p)/sum(p))
                 # Assignment through random draw fron unif(0,1), taking first value from prob. vector
                 draw = np.random.rand()
                 i = np.argwhere(draw<np.cumsum(p)/sum(p))[0]
+                
 
                 # Assignment of current node to component i
                 self.z[n,:] = 0
@@ -287,31 +290,13 @@ class SBM():
                 if K > 1: 
                     LM_n[:,-S.shape[1]:] += S
 
-                # M = np.tile(m, (K, 1)) + np.diag(m.flatten())
-                # M__2 = M[~np.eye(M.shape[0],dtype=bool)].reshape(M.shape[0], -1)
-                # max_links_current_node = np.concatenate([M,M__2],axis=1)
+                Max = np.tile(m, (K, 1)) + np.diag(m.flatten())
+                Max_2 = Max[~np.eye(Max.shape[0],dtype=bool)].reshape(Max.shape[0], -1)
+                MLM_n = np.concatenate([Max,Max_2],axis=1) #Max Link Matrix
 
-                # Section for C
-                X_bin_ = self.X_bin[np.ix_(nn,nn)]
-
-                r_bin = self.z[nn,:].T @ self.X_bin[n, nn]
-                R_bin = np.tile(r_bin, (K, 1))
-
-                s_bin = self.z[nn,:].T @ self.X_bin[nn, n]
-                S_bin = np.tile(s_bin[np.newaxis].T, (1, K))
-
-                C1 = self.z[nn,:].T @ X_bin_ @ self.z[nn,:]
+                C1 = m.T@m - np.diag(m.flatten())
                 C2 = C1.T[~np.eye(C1.T.shape[0],dtype=bool)].reshape(C1.T.shape[0], -1).copy()
                 C = np.concatenate([C1, C2], axis=1) #no. of possible links
-
-                LM_n_bin = np.zeros((LM.shape[0], LM.shape[1]))
-                LM_n_bin[0:R_bin.shape[0], 0:R_bin.shape[1]] += R_bin
-                s_diag_bin = np.diag(s_bin.flatten())
-                LM_n_bin[0:s_diag_bin.shape[0], 0:s_diag_bin.shape[1]] += s_diag_bin
-                S_bin = S_bin.T[~np.eye(S_bin.shape[0],dtype=bool)].reshape(S_bin.shape[0], -1)
-                if K > 1: 
-                    LM_n_bin[:,-S_bin.shape[1]:] += S_bin
-                #End section for C
 
                 F = np.zeros((LM.shape[0], LM.shape[1]))
                 f_out = np.sum(gammaln(np.multiply(self.z[nn,:].T, self.X[n, nn]) + 1), axis = 1)
@@ -331,14 +316,14 @@ class SBM():
 
 
                 logLikelihood_old = np.sum(gammaln(LM + LM_n + self.a) - gammaln(LM + self.a) \
-                            + (LM + self.a)*np.log(C + self.b) - (LM + LM_n + self.a)*np.log(C + LM_n_bin + self.b) \
+                            + (LM + self.a)*np.log(C + self.b) - (LM + LM_n + self.a)*np.log(C + MLM_n + self.b) \
                             - F, 1)
 
                 logLikelihood_new = np.sum(gammaln(np.hstack([r,s]) + self.a) - gammaln(self.a) \
-                            + (self.b)*np.log(self.a) - (np.hstack([r,s]) + self.a)*np.log(np.hstack([r_bin,s_bin]) + self.b) \
+                            + (self.b)*np.log(self.a) - (np.hstack([r,s]) + self.a)*np.log(np.hstack([m,m]) + self.b) \
                             - np.hstack([f_out, f_in]))[np.newaxis]
 
-                logLikelihood = np.concatenate([logLikelihood_old, logLikelihood_new])                
+                logLikelihood = np.concatenate([logLikelihood_old, logLikelihood_new])            
         else:
             if binary: #undirected binary
                 # m = n. of nodes in each component 
@@ -426,11 +411,13 @@ class SBM():
 
                 LM = self.zr.T @ X_ @ self.zc
 
+                
                 r = self.zc[nn,:].T @ self.X[n, nn]
                 LM_n = np.tile(r, (K, 1))
 
-                r_bin = self.zc[nn,:].T @ self.X_bin[n, nn]
-                LM_n_bin = np.tile(r_bin, (K,1))
+                mc = np.sum(self.zc[nn,:], 0)[np.newaxis]
+                # r_bin = self.zc[nn,:].T @ self.X_bin[n, nn]
+                Mc = np.tile(mc, (K,1))
 
                 C = self.zr.T @ X_bin_ @ self.zc
 
@@ -438,11 +425,11 @@ class SBM():
                 F = np.tile(f, (K, 1))
 
                 logLikelihood_old = np.sum(gammaln(LM + LM_n + self.a) - gammaln(LM + self.a) \
-                            + (LM + self.a)*np.log(C + self.b) - (LM + LM_n + self.a)*np.log(C + LM_n_bin + self.b) \
+                            + (LM + self.a)*np.log(C + self.b) - (LM + LM_n + self.a)*np.log(C + Mc + self.b) \
                             - F, 1)
 
                 logLikelihood_new = np.sum(gammaln(r + self.a) - gammaln(self.a) \
-                            + (self.b)*np.log(self.a) - (r + self.a)*np.log(r_bin + self.b) \
+                            + (self.b)*np.log(self.a) - (r + self.a)*np.log(mc + self.b) \
                             - f)[np.newaxis]
 
                 logLikelihood = np.concatenate([logLikelihood_old, logLikelihood_new])
@@ -482,8 +469,9 @@ class SBM():
                 s = self.zr[nn,:].T @ self.X[nn, n]
                 LM_n = np.tile(s[np.newaxis].T, (1, K))
 
-                s_bin = self.zr[nn,:].T @ self.X_bin[nn, n]
-                LM_n_bin = np.tile(s_bin[np.newaxis].T, (1, K))
+                mr = np.sum(self.zr[nn,:], 0)
+                # s_bin = self.zr[nn,:].T @ self.X_bin[nn, n]
+                Mr = np.tile(mr[np.newaxis].T, (1, K))
 
                 C = self.zr.T @ X_bin_ @ self.zc 
 
@@ -492,11 +480,11 @@ class SBM():
                 
 
                 logLikelihood_old = np.sum(gammaln(LM + LM_n + self.a) - gammaln(LM + self.a) \
-                            + (LM + self.a)*np.log(C + self.b) - (LM + LM_n + self.a)*np.log(C + LM_n_bin + self.b) \
+                            + (LM + self.a)*np.log(C + self.b) - (LM + LM_n + self.a)*np.log(C + Mr + self.b) \
                             - F, 1)
 
                 logLikelihood_new = np.sum(gammaln(s + self.a) - gammaln(self.a) \
-                            + (self.b)*np.log(self.a) - (s + self.a)*np.log(s_bin + self.b) \
+                            + (self.b)*np.log(self.a) - (s + self.a)*np.log(mr + self.b) \
                             - f)[np.newaxis]
 
                 logLikelihood = np.concatenate([logLikelihood_old, logLikelihood_new])
@@ -762,3 +750,77 @@ class SBM():
     #         if i == Kc: # If new component: add new column to partition matrix
     #             self.zc = np.hstack([self.zc, np.zeros(self.N,1)]) 
     #         self.zc[n,i] = 1
+
+    #WRONG WEIGHTED LLHOOD
+    # m = np.sum(self.z[nn,:], 0)[np.newaxis]
+
+    # r = self.z[nn,:].T @ self.X[n, nn]
+    # R = np.tile(r, (K, 1))
+
+    # s = self.z[nn,:].T @ self.X[nn, n]
+    # S = np.tile(s[np.newaxis].T, (1, K))
+
+    # M1 = self.z[nn,:].T @ X_ @ self.z[nn,:]
+    # M2 = M1.T[~np.eye(M1.T.shape[0],dtype=bool)].reshape(M1.T.shape[0], -1).copy()
+
+    # LM = np.concatenate([M1,M2],axis=1) #Link Matrix
+    # LM_n = np.zeros((LM.shape[0], LM.shape[1])) #Link Matrix of current node n
+    # LM_n[0:R.shape[0], 0:R.shape[1]] += R
+    # s_diag = np.diag(s.flatten())
+    # LM_n[0:s_diag.shape[0], 0:s_diag.shape[1]] += s_diag
+    # S = S.T[~np.eye(S.shape[0],dtype=bool)].reshape(S.shape[0], -1)
+    # if K > 1: 
+    #     LM_n[:,-S.shape[1]:] += S
+
+    # # M = np.tile(m, (K, 1)) + np.diag(m.flatten())
+    # # M__2 = M[~np.eye(M.shape[0],dtype=bool)].reshape(M.shape[0], -1)
+    # # max_links_current_node = np.concatenate([M,M__2],axis=1)
+
+    # # Section for C
+    # X_bin_ = self.X_bin[np.ix_(nn,nn)]
+
+    # r_bin = self.z[nn,:].T @ self.X_bin[n, nn]
+    # R_bin = np.tile(r_bin, (K, 1))
+
+    # s_bin = self.z[nn,:].T @ self.X_bin[nn, n]
+    # S_bin = np.tile(s_bin[np.newaxis].T, (1, K))
+
+    # C1 = self.z[nn,:].T @ X_bin_ @ self.z[nn,:]
+    # C2 = C1.T[~np.eye(C1.T.shape[0],dtype=bool)].reshape(C1.T.shape[0], -1).copy()
+    # C = np.concatenate([C1, C2], axis=1) #no. of possible links
+
+    # LM_n_bin = np.zeros((LM.shape[0], LM.shape[1]))
+    # LM_n_bin[0:R_bin.shape[0], 0:R_bin.shape[1]] += R_bin
+    # s_diag_bin = np.diag(s_bin.flatten())
+    # LM_n_bin[0:s_diag_bin.shape[0], 0:s_diag_bin.shape[1]] += s_diag_bin
+    # S_bin = S_bin.T[~np.eye(S_bin.shape[0],dtype=bool)].reshape(S_bin.shape[0], -1)
+    # if K > 1: 
+    #     LM_n_bin[:,-S_bin.shape[1]:] += S_bin
+    # #End section for C
+
+    # F = np.zeros((LM.shape[0], LM.shape[1]))
+    # f_out = np.sum(gammaln(np.multiply(self.z[nn,:].T, self.X[n, nn]) + 1), axis = 1)
+    # F_out = np.tile(f_out, (K, 1))
+
+    # f_in = np.sum(gammaln(np.multiply(self.z[nn,:].T, self.X[nn, n]) + 1), axis = 1)
+    # f_in_diag = np.diag(f_in)
+    # F_in = np.tile(f_in[np.newaxis].T, (1, K))
+    # F_in = F_in.T[~np.eye(F_in.shape[0],dtype=bool)].reshape(F_in.shape[0], -1)
+
+    # F[0:F_out.shape[0], 0:F_out.shape[1]] += F_out
+    # F[0:F_out.shape[0], 0:F_out.shape[1]] += f_in_diag
+    # if K > 1: 
+    #     F[:,-F_in.shape[1]:] += F_in
+    # if K == 1:
+    #     F[:] += f_in
+
+
+    # logLikelihood_old = np.sum(gammaln(LM + LM_n + self.a) - gammaln(LM + self.a) \
+    #             + (LM + self.a)*np.log(C + self.b) - (LM + LM_n + self.a)*np.log(C + LM_n_bin + self.b) \
+    #             - F, 1)
+
+    # logLikelihood_new = np.sum(gammaln(np.hstack([r,s]) + self.a) - gammaln(self.a) \
+    #             + (self.b)*np.log(self.a) - (np.hstack([r,s]) + self.a)*np.log(np.hstack([r_bin,s_bin]) + self.b) \
+    #             - np.hstack([f_out, f_in]))[np.newaxis]
+
+    # logLikelihood = np.concatenate([logLikelihood_old, logLikelihood_new])  

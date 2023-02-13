@@ -1,5 +1,4 @@
 import numpy as np
-
 from scipy.special import betaln
 from scipy.special import gammaln
 
@@ -41,45 +40,6 @@ class SBM():
 
         if isinstance(set_seed, int):
             np.random.seed(set_seed)
-
-    def checkPriorParameters(self):
-        # Sanity check if the correct parameters have been inputted for the desired prior
-        if self.unicluster:
-            if self.prior_r == "DP":
-                assert (self.alpha_PY_r is not None), "alpha_PY_r missing for DP prior"
-            if self.prior_r == "PY":
-                assert (self.alpha_PY_r is not None), "alpha_PY_r missing for PY prior"
-                assert (self.sigma_PY_r is not None), "sigma_PY_r missing for PY prior"
-                #Potential check for sigma outside of range
-            if self.prior_r == "DM":
-                assert (self.beta_DM_r is not None), "beta_DM_r missing for DM prior"
-                assert (self.K_star_DM_r is not None), "K_star_r missing for DM prior"
-            if self.prior_r == "GN":
-                assert (self.gamma_GN_r is not None), "gamma_GN_r missing for GN prior"
-        else:
-            if self.prior_r == "DP":
-                assert (self.alpha_PY_r is not None), "alpha_PY_r missing for DP row prior"
-            if self.prior_r == "PY":
-                assert (self.alpha_PY_r is not None), "alpha_PY_r missing for PY row prior"
-                assert (self.sigma_PY_r is not None), "sigma_PY_r missing for PY row prior"
-                #Potential check for sigma outside of range
-            if self.prior_r == "DM":
-                assert (self.beta_DM_r is not None), "beta_DM_r missing for DM row prior"
-                assert (self.K_star_DM_r is not None), "K_star_r missing for DM row prior"
-            if self.prior_r == "GN":
-                assert (self.gamma_GN_r is not None), "gamma_GN_r missing for GN row prior"
-
-            if self.prior_c == "DP":
-                assert (self.alpha_PY_c is not None), "alpha_PY_c missing for DP column prior"
-            if self.prior_c == "PY":
-                assert (self.alpha_PY_c is not None), "alpha_PY_c missing for PY column prior"
-                assert (self.sigma_PY_c is not None), "sigma_PY_c missing for PY column prior"
-                #Potential check for sigma outside of range
-            if self.prior_c == "DM":
-                assert (self.beta_DM_c is not None), "beta_DM_c missing for DM column prior"
-                assert (self.K_star_DM_c is not None), "K_star_c missing for DM column prior"
-            if self.prior_c == "GN":
-                assert (self.gamma_GN_c is not None), "gamma_GN_c missing for GN column prior"
 
     def evalPrior(self, nn, direction = "rows"):
         if self.unicluster:
@@ -416,7 +376,7 @@ class SBM():
                 r_bin = self.z[nn,:].T @ self.X_bin[n, nn]
                 LM_n_bin = np.tile(r_bin, (K, 1))
 
-                f = np.sum(gammaln(np.multiply(self.z[nn,:].T, self.X[n, nn] + 1)), axis = 1)
+                f = np.sum(gammaln(np.multiply(self.z[nn,:].T, self.X[n, nn]) + 1), axis = 1)
                 F = np.tile(f, (K,1))
 
 
@@ -439,7 +399,6 @@ class SBM():
             if binary: #directed binary
                 X_[n,:] = 0 #adj matrix without currently sampled node rows
 
-                mr = np.sum(self.zr[nn,:], 0)[np.newaxis] #newaxis allows m to become 2d array (for transposing)
                 mc = np.sum(self.zc[nn,:], 0)[np.newaxis]
                 Mc = np.tile(mc, (K, 1))
                 LM = self.zr.T @ X_ @ self.zc
@@ -467,17 +426,16 @@ class SBM():
 
                 LM = self.zr.T @ X_ @ self.zc
 
-                r = self.zr[nn,:].T @ self.X[n, nn]
+                r = self.zc[nn,:].T @ self.X[n, nn]
                 LM_n = np.tile(r, (K, 1))
 
-                r_bin = self.zr[nn,:].T @ self.X_bin[n, nn]
+                r_bin = self.zc[nn,:].T @ self.X_bin[n, nn]
                 LM_n_bin = np.tile(r_bin, (K,1))
 
-                C = self.zr.T @ X_bin_ @ self.zc #CHECK
+                C = self.zr.T @ X_bin_ @ self.zc
 
-                f = np.sum(gammaln(np.multiply(self.z[nn,:].T, self.X[n, nn]) + 1), axis = 1)
+                f = np.sum(gammaln(np.multiply(self.zc[nn,:].T, self.X[n, nn]) + 1), axis = 1)
                 F = np.tile(f, (K, 1))
-                
 
                 logLikelihood_old = np.sum(gammaln(LM + LM_n + self.a) - gammaln(LM + self.a) \
                             + (LM + self.a)*np.log(C + self.b) - (LM + LM_n + self.a)*np.log(C + LM_n_bin + self.b) \
@@ -494,7 +452,6 @@ class SBM():
                 X_[:,n] = 0 #adj matrix without currently sampled node columns
 
                 mr = np.sum(self.zr[nn,:], 0)[np.newaxis] #newaxis allows m to become 2d array (for transposing)
-                mc = np.sum(self.zc[nn,:], 0)[np.newaxis]
                 Mr = np.tile(mr.T, (1, K))
 
                 LM = self.zr.T @ X_ @ self.zc
@@ -522,24 +479,24 @@ class SBM():
 
                 LM = self.zr.T @ X_ @ self.zc
 
-                s = self.zc[nn,:].T @ self.X[nn, n]
+                s = self.zr[nn,:].T @ self.X[nn, n]
                 LM_n = np.tile(s[np.newaxis].T, (1, K))
 
-                s_bin = self.zc[nn,:].T @ self.X_bin[nn, n]
-                LM_n_bin = np.tile(s_bin[np.newaxis].T, (1,K))
+                s_bin = self.zr[nn,:].T @ self.X_bin[nn, n]
+                LM_n_bin = np.tile(s_bin[np.newaxis].T, (1, K))
 
-                C = self.zr.T @ X_bin_ @ self.zc #CHECK
+                C = self.zr.T @ X_bin_ @ self.zc 
 
-                f = np.sum(gammaln(np.multiply(self.zc[nn,:].T, self.X[nn, n].T) + 1), axis = 1) #CHECK
-                F = np.tile(f, (K, 1))
+                f = np.sum(gammaln(np.multiply(self.zr[nn,:], self.X[nn, n][np.newaxis].T) + 1), axis = 0)
+                F = np.tile(f[np.newaxis].T, (1, K))
                 
 
                 logLikelihood_old = np.sum(gammaln(LM + LM_n + self.a) - gammaln(LM + self.a) \
                             + (LM + self.a)*np.log(C + self.b) - (LM + LM_n + self.a)*np.log(C + LM_n_bin + self.b) \
                             - F, 1)
 
-                logLikelihood_new = np.sum(gammaln(r + self.a) - gammaln(self.a) \
-                            + (self.b)*np.log(self.a) - (r + self.a)*np.log(r_bin + self.b) \
+                logLikelihood_new = np.sum(gammaln(s + self.a) - gammaln(self.a) \
+                            + (self.b)*np.log(self.a) - (s + self.a)*np.log(s_bin + self.b) \
                             - f)[np.newaxis]
 
                 logLikelihood = np.concatenate([logLikelihood_old, logLikelihood_new])
@@ -559,6 +516,45 @@ class SBM():
     
     def prior_GN(self, m , gamma):
         return np.append((m + 1) * (np.sum(m) - len(m) + gamma), len(m)^2 - len(m)*gamma)
+    
+    def checkPriorParameters(self):
+        # Sanity check if the correct parameters have been inputted for the desired prior
+        if self.unicluster:
+            if self.prior_r == "DP":
+                assert (self.alpha_PY_r is not None), "alpha_PY_r missing for DP prior"
+            if self.prior_r == "PY":
+                assert (self.alpha_PY_r is not None), "alpha_PY_r missing for PY prior"
+                assert (self.sigma_PY_r is not None), "sigma_PY_r missing for PY prior"
+                #Potential check for sigma outside of range
+            if self.prior_r == "DM":
+                assert (self.beta_DM_r is not None), "beta_DM_r missing for DM prior"
+                assert (self.K_star_DM_r is not None), "K_star_r missing for DM prior"
+            if self.prior_r == "GN":
+                assert (self.gamma_GN_r is not None), "gamma_GN_r missing for GN prior"
+        else:
+            if self.prior_r == "DP":
+                assert (self.alpha_PY_r is not None), "alpha_PY_r missing for DP row prior"
+            if self.prior_r == "PY":
+                assert (self.alpha_PY_r is not None), "alpha_PY_r missing for PY row prior"
+                assert (self.sigma_PY_r is not None), "sigma_PY_r missing for PY row prior"
+                #Potential check for sigma outside of range
+            if self.prior_r == "DM":
+                assert (self.beta_DM_r is not None), "beta_DM_r missing for DM row prior"
+                assert (self.K_star_DM_r is not None), "K_star_r missing for DM row prior"
+            if self.prior_r == "GN":
+                assert (self.gamma_GN_r is not None), "gamma_GN_r missing for GN row prior"
+
+            if self.prior_c == "DP":
+                assert (self.alpha_PY_c is not None), "alpha_PY_c missing for DP column prior"
+            if self.prior_c == "PY":
+                assert (self.alpha_PY_c is not None), "alpha_PY_c missing for PY column prior"
+                assert (self.sigma_PY_c is not None), "sigma_PY_c missing for PY column prior"
+                #Potential check for sigma outside of range
+            if self.prior_c == "DM":
+                assert (self.beta_DM_c is not None), "beta_DM_c missing for DM column prior"
+                assert (self.K_star_DM_c is not None), "K_star_c missing for DM column prior"
+            if self.prior_c == "GN":
+                assert (self.gamma_GN_c is not None), "gamma_GN_c missing for GN column prior"
     
 
     # def gibbs_sweep(self, n, directed, binary):

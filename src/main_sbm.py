@@ -106,18 +106,14 @@ class SBM():
                     self.z = np.delete(self.z, idx, axis=1)
                     K -= len(idx)
 
-                logLikelihood = self.evalLikelihood(nn, n, K, self.directed, self.binary)
+                logLikelihood = self.evalLikelihood(nn, n, K)
 
                 logPrior = np.log(self.evalPrior(nn, self.unicluster))
-                # logPrior = np.log(np.append(m, self.A)) #TODO: Priors
                 
                 logPosterior = logPrior + logLikelihood
-                # print("Post: ",logPosterior)
 
                 # Convert from log probabilities, normalized to max
                 p = np.exp(logPosterior-max(logPosterior)) 
-                # print("prob: ", p)
-                # print(np.cumsum(p)/sum(p))
                 # Assignment through random draw fron unif(0,1), taking first value from prob. vector
                 draw = np.random.rand()
                 i = np.argwhere(draw<np.cumsum(p)/sum(p))[0]
@@ -141,6 +137,8 @@ class SBM():
         self.Zc = []
 
         self.idx_list = [x for x in range(self.N)]
+
+         
         
         for _ in range(self.T):
             for n in range(self.N):
@@ -154,7 +152,7 @@ class SBM():
                     self.zr = np.delete(self.zr, idx, axis=1)
                     Kr -= len(idx)
 
-                logLikelihood = self.evalLikelihoodBicluster(nn, n, Kr, "rows", self.binary)
+                logLikelihood = self.evalLikelihoodBicluster(nn, n, Kr, "rows")
 
                 logPrior = np.log(self.evalPrior(nn, direction = "rows"))
 
@@ -182,7 +180,7 @@ class SBM():
                     self.zc = np.delete(self.zc, idx, axis=1)
                     Kc -= len(idx)     
 
-                logLikelihood = self.evalLikelihoodBicluster(nn, n, Kc, "columns", self.binary)   
+                logLikelihood = self.evalLikelihoodBicluster(nn, n, Kc, "columns")   
 
                 logPrior = np.log(self.evalPrior(nn, direction = "columns"))
 
@@ -197,7 +195,10 @@ class SBM():
                 self.zc[n,:] = 0
                 if i == Kc: # If new component: add new column to partition matrix
                     self.zc = np.hstack([self.zc, np.zeros((self.N,1))]) 
-                self.zc[n,i] = 1                    
+                self.zc[n,i] = 1      
+                
+
+                         
 
             self.Z.append([self.zr.copy(), self.zc.copy()])
             self.Zr.append(self.zr.copy())
@@ -222,11 +223,11 @@ class SBM():
     #         self.Zr.append(self.zr.copy())
     #         self.Zc.append(self.zc.copy())
     
-    def evalLikelihood(self, nn, n, K, directed, binary):
+    def evalLikelihood(self, nn, n, K):
         X_ = self.X[np.ix_(nn,nn)] #adjacency matrix without currently sampled node
 
-        if directed:
-            if binary: #directed binary
+        if self.directed:
+            if self.binary: #directed binary
                 # m = n. of nodes in each component 
                 m = np.sum(self.z[nn,:], 0)[np.newaxis] #newaxis allows m to become 2d array (for transposing)
                 
@@ -325,7 +326,7 @@ class SBM():
 
                 logLikelihood = np.concatenate([logLikelihood_old, logLikelihood_new])            
         else:
-            if binary: #undirected binary
+            if self.binary: #undirected binary
                 # m = n. of nodes in each component 
                 m = np.sum(self.z[nn], 0)[np.newaxis]
                 P = np.tile(m, (K, 1)) #Potential links
@@ -347,7 +348,7 @@ class SBM():
 
                 logLikelihood = np.concatenate([logLikelihood_old, logLikelihood_new])
 
-            else: #undirected weighted
+            else: #undirected weighted, not tested
                 m = np.sum(self.z[nn,:], 0)[np.newaxis]
                 C = np.tile(m, (K, 1)) #Potential links
 
@@ -377,11 +378,11 @@ class SBM():
 
         return logLikelihood
     
-    def evalLikelihoodBicluster(self, nn, n, K, binary, direction = "rows"):
+    def evalLikelihoodBicluster(self, nn, n, K, direction = "rows"):
         X_ = self.X.copy().astype(int)
         X_bin_ = self.X_bin.copy().astype(int)
         if direction == "rows":
-            if binary: #directed binary
+            if self.binary: #directed binary
                 X_[n,:] = 0 #adj matrix without currently sampled node rows
 
                 mc = np.sum(self.zc[nn,:], 0)[np.newaxis]
@@ -435,7 +436,7 @@ class SBM():
                 logLikelihood = np.concatenate([logLikelihood_old, logLikelihood_new])
 
         elif direction == "columns":
-            if binary:
+            if self.binary:
                 X_[:,n] = 0 #adj matrix without currently sampled node columns
 
                 mr = np.sum(self.zr[nn,:], 0)[np.newaxis] #newaxis allows m to become 2d array (for transposing)
@@ -447,12 +448,12 @@ class SBM():
                 X_rev[:,n] = 0
                 NLM = self.zr.T @ X_rev @ self.zc #n. of non-links between biclusters without current node
 
-                s = self.zc[nn,:].T @ self.X[nn, n]
+                s = self.zr[nn,:].T @ self.X[nn, n]
                 S = np.tile(s[np.newaxis].T, (1, K))
 
                 logLikelihood_new = np.sum(betaln(LM + S + self.a, NLM + Mr - S + self.b) \
                                         - betaln(LM + self.a, NLM + self.b)
-                                        , 1)
+                                        , 0)
 
                 logLikelihood_old = np.sum(betaln(s + self.a, mr - s + self.b) \
                                         - betaln(self.a, self.b)
@@ -469,11 +470,11 @@ class SBM():
                 s = self.zr[nn,:].T @ self.X[nn, n]
                 LM_n = np.tile(s[np.newaxis].T, (1, K))
 
-                mr = np.sum(self.zr[nn,:], 0)
+                mr = np.sum(self.zr[nn,:], 0)[np.newaxis]
                 # s_bin = self.zr[nn,:].T @ self.X_bin[nn, n]
-                Mr = np.tile(mr[np.newaxis].T, (1, K))
+                Mr = np.tile(mr.T, (1, K))
 
-                C = self.zr.T @ X_bin_ @ self.zc 
+                C = self.zr.T @ X_bin_ @ self.zc
 
                 f = np.sum(gammaln(np.multiply(self.zr[nn,:], self.X[nn, n][np.newaxis].T) + 1), axis = 0)
                 F = np.tile(f[np.newaxis].T, (1, K))
@@ -481,7 +482,7 @@ class SBM():
 
                 logLikelihood_old = np.sum(gammaln(LM + LM_n + self.a) - gammaln(LM + self.a) \
                             + (LM + self.a)*np.log(C + self.b) - (LM + LM_n + self.a)*np.log(C + Mr + self.b) \
-                            - F, 1)
+                            - F, 0)
 
                 logLikelihood_new = np.sum(gammaln(s + self.a) - gammaln(self.a) \
                             + (self.b)*np.log(self.a) - (s + self.a)*np.log(mr + self.b) \
@@ -499,11 +500,11 @@ class SBM():
     def prior_PY(self, m, alpha, sigma):
         return np.append(m-sigma, alpha+len(m)*sigma)
 
-    def prior_DM(self, m, beta, K_star):
-        return np.append(m + beta, beta * (K_star - len(m)) * (K_star > len(m)))
+    def prior_DM(self, m, beta, K_hat):
+        return np.append(m + beta, beta * (K_hat - len(m)) * (K_hat > len(m)))
     
     def prior_GN(self, m , gamma):
-        return np.append((m + 1) * (np.sum(m) - len(m) + gamma), len(m)^2 - len(m)*gamma)
+        return np.append((m + 1) * (np.sum(m) - len(m) + gamma), len(m)**2 - len(m)*gamma)
     
     def checkPriorParameters(self):
         # Sanity check if the correct parameters have been inputted for the desired prior
@@ -543,7 +544,23 @@ class SBM():
                 assert (self.K_star_DM_c is not None), "K_star_c missing for DM column prior"
             if self.prior_c == "GN":
                 assert (self.gamma_GN_c is not None), "gamma_GN_c missing for GN column prior"
+
+    def expected_cl(self, n, sigma, theta, H):
+        n = int(n)
+        if H == np.Infinity:
+            if sigma == 0:
+                output = theta * np.sum(1/(theta - 1 + np.array([_ for _ in range(1,n)])))
+            else:
+                output = 1/sigma*np.exp(gammaln(theta + sigma + n) - gammaln(theta + sigma) + gammaln(theta + 1)) - theta/sigma 
+        elif H < np.Infinity:
+            if sigma == 0:
+                idx = np.array([_ for _ in range(n-1)])
+                output = H - H*np.exp(np.sum(np.log(idx + theta*(1 - 1/H)) - np.log(theta + idx)))
+        return output
     
+    def expected_cl_gn(self):
+        pass
+
 
     # def gibbs_sweep(self, n, directed, binary):
     #     nn = list(self.idx_list)

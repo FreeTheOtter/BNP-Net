@@ -76,7 +76,10 @@ class SBM():
 
     def fit(self, X, T):
         self.X = X
-        self.X_rev = (np.where((X==0)|(X==1), X^1, X) - np.eye(X.shape[0])).copy()
+
+        X_temp = X.copy().astype(int)
+        self.X_rev = (np.where((X_temp==0)|(X_temp==1), X_temp^1, X_temp) - np.eye(X_temp.shape[0])).copy()
+        del X_temp
 
         self.X_bin = self.X.copy()
         self.X_bin[self.X_bin>0] = 1
@@ -631,16 +634,18 @@ class SBM():
         self.compute_zhat(gap)
         if self.unicluster:
             if self.binary:
-                self.block_edges = self.z_hat.T @ self.X @ self.z_hat
-                m = np.array(np.sum(self.z_hat, axis = 0))[np.newaxis]
-                self.block_possible_edges = np.outer(m, m)
+                self.block_links = self.z_hat.T @ self.X @ self.z_hat
+                self.block_nonlinks = self.z_hat.T @ self.X_rev @ self.z_hat
+                # m = np.array(np.sum(self.z_hat, axis = 0))[np.newaxis]
+                # self.block_possible_edges = np.outer(m, m)
         else:
             if self.binary:
-                self.block_edges = self.zr_hat.T @ self.X @ self.zc_hat
-                mr = np.array(np.sum(self.zr_hat, axis = 0))
-                mc = np.array(np.sum(self.zc_hat, axis = 0))
-                self.block_possible_edges = np.outer(mr, mc)
-        self.estimated_theta = (self.block_edges + self.a)/(self.block_possible_edges + self.b)
+                self.block_links = self.zr_hat.T @ self.X @ self.zc_hat
+                self.block_nonlinks = self.zr_hat.T @ self.X_rev @ self.zc_hat
+                # mr = np.array(np.sum(self.zr_hat, axis = 0))
+                # mc = np.array(np.sum(self.zc_hat, axis = 0))
+                # self.block_possible_edges = np.outer(mr, mc)
+        self.estimated_theta = (self.block_links + self.a)/(self.block_links + self.block_nonlinks + self.b)
 
     def predict(self, gap = 1):
         self.compute_block_probabilities(gap)
@@ -660,20 +665,17 @@ class SBM():
                     self.X_pred_theta[i,j] = self.estimated_theta[int(self.cr_hat[i]), int(self.cc_hat[j])]
     
     def evalLogLikelihood_full(self, zr = "none", zc = "none"):
-        if zr == "none":
-            zr = self.zr
-        if zc == "none":
-            zc = self.zc
+
         if self.unicluster:
-            z = zr
+            if zr == "none":
+                z = self.z
+            else:
+                z = zr
+
             if self.directed:
                 if self.binary: #directed binary
                     LM = z.T @ self.X @ z
-
-                    m = np.sum(zr, 0)[np.newaxis]
-                    NLM = m.T@m - np.diag(m.flatten()) - LM
-
-                    logLikelihood = np.sum(betaln(LM + self.a, NLM + self.b) - betaln(self.a, self.b))
+                    NLM = z.T @ self.X_rev @ z
                 else: #directed weighted
                     pass
             else:
@@ -682,15 +684,18 @@ class SBM():
                 else: #undirected weighted
                     pass
         else:
+            if zr == "none":
+                zr = self.zr
+            if zc == "none":
+                zc = self.zc
+
             if self.binary: #biclustering binary
                 LM = zr.T @ self.X @ zc
-
+                NLM = zr.T @ self.X_rev @ zc
             else: #biclustering weighted
                 pass
-    
-
-
-
+        logLikelihood = np.sum(betaln(LM + self.a, NLM + self.b) - betaln(self.a, self.b))
+        return logLikelihood
 
     def prior_DP(self, m, alpha):
         return np.append(m, alpha)

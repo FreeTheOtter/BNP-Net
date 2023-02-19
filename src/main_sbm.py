@@ -552,7 +552,7 @@ class SBM():
             self.c_hat = np.where(self.z_hat==1)[1]
             #temp
             self.zr_hat = self.z_hat
-            self.zc_hat = self.c_hat
+            self.zc_hat = self.z_hat
             self.cr_hat = self.c_hat
             self.cc_hat = self.c_hat
 
@@ -762,4 +762,5 @@ class SBM():
         return output
     
     def expected_cl_gn(self):
+            # np.exp()
         pass

@@ -2,6 +2,8 @@ import numpy as np
 from scipy.special import betaln
 from scipy.special import gammaln
 from igraph.clustering import compare_communities
+# from arviz import waic
+from scipy.stats import binom
 
 class SBM():
     """
@@ -664,7 +666,7 @@ class SBM():
                         continue
                     self.X_pred_theta[i,j] = self.estimated_theta[int(self.cr_hat[i]), int(self.cc_hat[j])]
     
-    def evalLogLikelihood_full(self, zr = "none", zc = "none"):
+    def evalLogLikelihood_full(self, zr = "none", zc = "none", ret_sum = True, ret_waic = False):
 
         if self.unicluster:
             if zr == "none":
@@ -694,8 +696,17 @@ class SBM():
                 NLM = zr.T @ self.X_rev @ zc
             else: #biclustering weighted
                 pass
-        logLikelihood = np.sum(betaln(LM + self.a, NLM + self.b) - betaln(self.a, self.b))
+        if ret_sum:
+            logLikelihood = np.sum(betaln(LM + self.a, NLM + self.b) - betaln(self.a, self.b))
+        else:
+            logLikelihood = betaln(LM + self.a, NLM + self.b) - betaln(self.a, self.b)
         return logLikelihood
+    
+    def compute_waic(self, Zsample):
+        ll = binom.logpmf(self.X, 1, self.X_pred_theta)
+        lppd = np.sum(ll)
+        var = np.var(ll)
+        return -2*lppd + 2*var
 
     def prior_DP(self, m, alpha):
         return np.append(m, alpha)

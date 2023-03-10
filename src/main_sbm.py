@@ -702,11 +702,11 @@ class SBM():
             logLikelihood = betaln(LM + self.a, NLM + self.b) - betaln(self.a, self.b)
         return logLikelihood
     
-    def compute_waic(self, Zsample):
-        ll = binom.logpmf(self.X, 1, self.X_pred_theta)
-        lppd = np.sum(ll)
-        var = np.var(ll)
-        return -2*lppd + 2*var
+    # def compute_waic(self, Zsample):
+    #     ll = binom.logpmf(self.X, 1, self.X_pred_theta)
+    #     lppd = np.sum(ll)
+    #     var = np.var(ll)
+    #     return -2*lppd + 2*var
 
     def prior_DP(self, m, alpha):
         return np.append(m, alpha)
